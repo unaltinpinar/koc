@@ -118,6 +118,20 @@ pre{white-space:pre-wrap;word-break:break-word;background:var(--soft);padding:12
 .kutu-iki{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
 #toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#0f2a4d;color:#fff;border-bottom:3px solid var(--or);padding:11px 20px;border-radius:10px;max-width:90vw;opacity:0;pointer-events:none;transition:opacity .2s;z-index:60;box-shadow:0 10px 30px -8px rgba(0,0,0,.5)}
 #toast.show{opacity:1}
+.thbtn{font:inherit;font-weight:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit;background:none;border:none;padding:4px 0;cursor:pointer;min-height:32px;white-space:nowrap}
+.thbtn:hover{text-decoration:underline}
+.konubtn{font:inherit;color:var(--brand);background:none;border:none;padding:4px 0;text-align:left;cursor:pointer;text-decoration:underline dotted;min-height:32px}
+.konubtn[aria-pressed=true]{font-weight:800;color:var(--or-ink)}
+tr.sec td{background:color-mix(in srgb,var(--or) 12%,transparent)}
+tr.detay td{background:var(--soft);padding:14px}
+.ch-l1{fill:none;stroke:var(--ink);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round}
+.ch-l2{fill:none;stroke-width:2.5;stroke-dasharray:6 4;stroke-linejoin:round;stroke-linecap:round}
+.ch-l2.y{stroke:var(--red)}
+.ch-l2.d{stroke:#2e9d6e}
+.lejant{display:flex;flex-wrap:wrap;gap:6px 16px;margin:6px 0 4px;font-size:13px}
+.lej{display:inline-flex;align-items:center;gap:6px}
+.lej svg{width:28px;height:10px}
+.lej i{display:inline-block;width:12px;height:12px;border-radius:3px}
 @media (max-width:560px){header.top{padding:16px}header.top h1{font-size:22px}.card,.kart{padding:16px}.row{grid-template-columns:1fr 1fr}.row .lbl{grid-column:1 / 3;padding-top:0}.row .ac{grid-column:1 / 3}.hbar{grid-template-columns:1fr 70px}.hbar .bar{grid-column:1 / 3;order:3}.toggle{display:flex}.toggle button{flex:1;padding:6px 8px}}
 @media (prefers-reduced-motion:reduce){#toast,.btn,nav.sekmeler button{transition:none}}
 @media print{nav.sekmeler,.btn,.toolbar{display:none}body{background:#fff;color:#000}header.top{background:none;color:#000;box-shadow:none}header.top::after{display:none}.card{break-inside:avoid;box-shadow:none}}
@@ -362,8 +376,8 @@ function dersHizi(oturumlar) {
   for (const o of oturumlar) {
     if (o.tur !== 'konu' || !o.sure) continue;
     const b = o.bolumler[0];
-    const x = (m[b.ders] = m[b.ders] || { ders: b.ders, soru: 0, sure: 0 });
-    x.soru += b.soru; x.sure += o.sure;
+    const x = (m[b.ders] = m[b.ders] || { ders: b.ders, soru: 0, sure: 0, d: 0, y: 0, b: 0 });
+    x.soru += b.soru; x.sure += o.sure; x.d += b.d; x.y += b.y; x.b += b.b;
   }
   return DERSLER.filter(d => m[d.id]).map(d => ({ ...m[d.id], hiz: m[d.id].soru / m[d.id].sure }));
 }
@@ -392,6 +406,47 @@ function hataDagilimi(oturumlar) {
     }
   }
   return { adet, toplam, dersler };
+}
+
+function gunluk(oturumlar, ref, n) {
+  const out = [];
+  for (let i = n - 1; i >= 0; i--) out.push({ gun: gunEkle(ref, -i), soru: 0, d: 0, y: 0, b: 0 });
+  const idx = new Map(out.map(x => [x.gun, x]));
+  for (const o of oturumlar) {
+    const x = idx.get(o.tarih);
+    if (!x) continue;
+    for (const b of o.bolumler) { x.soru += b.soru; x.d += b.d; x.y += b.y; x.b += b.b; }
+  }
+  return out;
+}
+function haftalarDers(oturumlar, ref, n) {
+  const son = haftaBasi(ref);
+  const out = [];
+  for (let i = n - 1; i >= 0; i--) { const w = { bas: gunEkle(son, -7 * i), toplam: 0, guncel: i === 0 }; DERSLER.forEach(d => { w[d.id] = 0; }); out.push(w); }
+  const idx = new Map(out.map(w => [w.bas, w]));
+  for (const o of oturumlar) {
+    const w = idx.get(haftaBasi(o.tarih));
+    if (!w) continue;
+    for (const b of o.bolumler) { w[b.ders] += b.soru; w.toplam += b.soru; }
+  }
+  return out;
+}
+/* Her kayıt x konu için bir satır: günlük (gün bazlı) görünüm ve konuya özel nedenler bunu kullanır. */
+function kayitSatirlari(oturumlar) {
+  const out = [];
+  for (const o of oturumlar) for (const b of o.bolumler) {
+    if (o.tur === 'konu') {
+      out.push({ tarih: o.tarih, tur: 'konu', ad: '', ders: b.ders, konu: b.konu, soru: b.soru, d: b.d, y: b.y, b: b.b,
+        hatalar: o.hatalar.filter(h => h.ders === b.ders && h.konu === b.konu) });
+    } else if (b.konular) {
+      for (const [konu, n] of Object.entries(b.konular)) {
+        const hs = o.hatalar.filter(h => h.ders === b.ders && h.konu === konu);
+        const hy = hs.filter(h => h.sonuc === 'y').length, hb = hs.length - hy;
+        out.push({ tarih: o.tarih, tur: 'deneme', ad: o.ad || 'Deneme', ders: b.ders, konu, soru: n, d: Math.max(0, n - hy - hb), y: hy, b: hb, hatalar: hs });
+      }
+    }
+  }
+  return out;
 }
 
 function haftalar(oturumlar, ref, n) {
@@ -502,7 +557,7 @@ function ozet(oturumlar, hedef, ref) {
   const son = ds.length ? ds[ds.length - 1].tarih : null;
   return {
     ref, kayit: ds.length, toplamSoru, son, gunOnce: son ? farkGun(ref, son) : null,
-    haftalar: haftalar(ds, ref, 8), konular: konuIstatistik(ds), trend: konuTrend(ds, ref), hiz: dersHizi(ds),
+    oturumlar: ds, haftalar: haftalar(ds, ref, 8), haftalarDers: haftalarDers(ds, ref, 8), gunluk: gunluk(ds, ref, 96), konular: konuIstatistik(ds), trend: konuTrend(ds, ref), hiz: dersHizi(ds),
     denemeler: denemeListesi(ds), hata: hataDagilimi(ds), tekrar: tekrarListesi(ds, ref),
     uyarilar: uyarilar(ds, hedef, ref), veriYeterli: ds.length >= 3 && toplamSoru >= 60
   };
@@ -561,7 +616,7 @@ function aiPaket(kod, oz, hedef) {
       fark_puan: t.fark == null ? null : Math.round(100 * t.fark),
       baskin_neden_son: t.nedenSon ? { neden: nedenAd(t.nedenSon.neden), adet: t.nedenSon.adet } : null,
       baskin_neden_onceki: t.nedenOnceki ? { neden: nedenAd(t.nedenOnceki.neden), adet: t.nedenOnceki.adet } : null })),
-    ders_hizi: oz.hiz.map(h => ({ ders: dad(h.ders), soru_dakika: r2(h.hiz), soru: h.soru })),
+    ders_hizi: oz.hiz.map(h => ({ ders: dad(h.ders), soru_dakika: r2(h.hiz), soru: h.soru, yanlis_orani_yuzde: Math.round(100 * h.y / h.soru), dogru_soru_dakika: r2(h.hiz * h.d / h.soru) })),
     denemeler: oz.denemeler.map(d => ({ ad: d.ad, tarih: d.tarih, net: d.net, sozel_net: d.sozel, sayisal_net: d.sayisal,
       ders_net: Object.fromEntries(Object.entries(d.dersNet).map(([k, v]) => [dad(k), v])) })),
     hata_nedenleri: Object.fromEntries(Object.entries(oz.hata.toplam).map(([k, v]) => [nedenAd(k === 'belirsiz' ? null : k), v])),
@@ -577,7 +632,7 @@ const api = {
   KONU_SURUM, HAFTA_BASLANGIC, DERSLER, KONULAR, NEDEN_Y, NEDEN_B, AI_ISTEM,
   net, r2, fmt, uid, bugun, tarihGecerli, tarihTR, farkGun, gunEkle, haftaBasi, kisalt, isInt,
   dersBul, nedenListesi, nedenAd, oturumDogrula, temizOturum, tanimDogrula, konuSayilari,
-  TREND, sirala, konuIstatistik, konuTrend, dersHizi, denemeListesi, hataDagilimi, haftalar, tekrarListesi, uyarilar, ozet,
+  TREND, gunluk, haftalarDers, kayitSatirlari, sirala, konuIstatistik, konuTrend, dersHizi, denemeListesi, hataDagilimi, haftalar, tekrarListesi, uyarilar, ozet,
   disaAktar, kodGecerli, icerikOku, birlestir, aiPaket
 };
 return api;
@@ -803,26 +858,208 @@ function tablo(basliklar, satirlar, sinif) {
     h('tbody', null, satirlar)));
 }
 
-function konuKarti(oz) {
-  const kap = h('div');
-  const sec = h('select', { 'aria-label': 'Derse göre süz' }, h('option', { value: '', text: 'Tüm dersler' }), D.map(d => h('option', { value: d.id, text: d.ad })));
-  const govde = h('div');
-  function ciz() {
-    govde.replaceChildren();
-    const liste = oz.konular.filter(k => k.soru > 0 && (!sec.value || k.ders === sec.value))
-      .sort((a, b) => ((a.soru >= 10) === (b.soru >= 10) ? (a.basari - b.basari) : (a.soru >= 10 ? -1 : 1)));
-    if (!liste.length) { govde.append(h('p', { class: 'bos', text: 'Bu seçim için konu verisi yok.' })); return; }
-    govde.append(tablo(['Ders', 'Konu', 'Soru', 'D', 'Y', 'B', 'Başarı', 'Soru/dk', 'Son'],
-      liste.map(k => h('tr', { class: k.soru < 10 ? 'az' : '' },
-        h('td', { text: dm(k.ders) }), h('td', { text: k.konu }), h('td', { class: 'sayi', text: String(k.soru) }),
-        h('td', { class: 'sayi', text: String(k.d) }), h('td', { class: 'sayi', text: String(k.y) }), h('td', { class: 'sayi', text: String(k.b) }),
-        h('td', null, h('div', { class: 'bar', role: 'img', 'aria-label': yuzde(k.basari) }, h('div', { class: 'fill', style: 'width:' + Math.round(100 * k.basari) + '%' })),
-          h('span', { class: 'bar-t', text: yuzde(k.basari) + (k.soru < 10 ? ' (az veri)' : '') })),
-        h('td', { class: 'sayi', text: k.hiz == null ? '–' : LGS.fmt(k.hiz, 1) }), h('td', { text: k.son ? kisaTarih(k.son) : '' })))));
+/* ---------- Ders / gün yardımcıları ---------- */
+const GUN_KISA = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
+const gunAdi = t => GUN_KISA[new Date(t + 'T00:00:00Z').getUTCDay()];
+const DERS_RENK = { tur: '#2f6db5', mat: '#f26a1b', fen: '#2e9d6e', ink: '#8a5cc4', din: '#c9a227', ing: '#d1477a' };
+const nedenEtiket = (sonuc, neden) => {
+  if (!neden) return 'Belirtilmemiş';
+  const x = LGS.nedenListesi(sonuc).find(n => n.id === neden);
+  return x ? x.ad : neden;
+};
+function nedenChips(hs) {
+  if (!hs.length) return h('span', { class: 'hint', text: 'Yanlış/boş yok' });
+  const c = new Map();
+  for (const x of hs) { const key = x.sonuc + '|' + (x.neden || ''); c.set(key, (c.get(key) || 0) + 1); }
+  return h('div', null, [...c.entries()].sort((a, b) => b[1] - a[1]).map(([key, n]) => {
+    const [sn, nd] = key.split('|');
+    return h('span', { class: 'chip', text: (sn === 'y' ? 'Yanlış' : 'Boş') + ' · ' + nedenEtiket(sn, nd) + ' ×' + n });
+  }));
+}
+function hareketli(veri, alan, pencere) {
+  return veri.map((_, i) => {
+    let t = 0;
+    for (let j = Math.max(0, i - pencere + 1); j <= i; j++) t += veri[j][alan];
+    return t / pencere;
+  });
+}
+function lejOrnek(sinif) {
+  return s('svg', { viewBox: '0 0 28 10', 'aria-hidden': 'true' }, s('line', { class: sinif, x1: 0, x2: 28, y1: 5, y2: 5 }));
+}
+
+/* ---------- Günlük soru grafiği ---------- */
+function gunlukGrafik(tum, n, cizgi) {
+  const MA = 7;
+  const m1 = hareketli(tum, 'soru', MA), m2 = hareketli(tum, cizgi, MA);
+  const off = tum.length - n;
+  const v = tum.slice(off), l1 = m1.slice(off), l2 = m2.slice(off);
+  const W = 560, H = 240, L = 38, R = 14, T = 20, B = 36;
+  const max = Math.max(10, ...v.map(x => x.soru), ...l1, ...l2) * 1.12;
+  const adim = nice(max / 4);
+  const y = val => T + (H - T - B) * (1 - val / max);
+  const bw = (W - L - R) / n;
+  const cx = i => L + i * bw + bw / 2;
+  const svg = s('svg', { viewBox: '0 0 ' + W + ' ' + H, role: 'img', class: 'chart', 'aria-label': 'Günlük çözülen soru sayısı ve eğilim çizgileri, son ' + n + ' gün' });
+  for (let t = 0; t <= max; t += adim) {
+    svg.append(s('line', { class: 'ch-grid', x1: L, x2: W - R, y1: y(t), y2: y(t) }), s('text', { class: 'ch-mut', x: L - 6, y: y(t) + 4, 'text-anchor': 'end' }, String(Math.round(t))));
   }
-  sec.addEventListener('change', ciz); ciz();
-  kap.append(h('div', { class: 'toolbar' }, sec, h('small', { class: 'hint', text: '10 sorudan az veri olan konular soluk gösterilir, sonuç çıkarmak için yetersizdir.' })), govde);
-  return kart('Konu bazlı durum', kap);
+  const adimEtiket = Math.ceil(n / 8);
+  v.forEach((x, i) => {
+    const bwid = Math.max(1.5, bw * 0.7);
+    svg.append(s('rect', { class: 'ch-bar' + (i === n - 1 ? ' cur' : ''), x: cx(i) - bwid / 2, y: y(x.soru), width: bwid, height: Math.max(0, y(0) - y(x.soru)), rx: 1.5 },
+      s('title', null, LGS.tarihTR(x.gun) + ' ' + gunAdi(x.gun) + ': ' + x.soru + ' soru (' + x.d + ' D, ' + x.y + ' Y, ' + x.b + ' B)')));
+    if ((n - 1 - i) % adimEtiket === 0) svg.append(s('text', { class: i === n - 1 ? 'ch-txt b' : 'ch-mut', x: cx(i), y: H - 14, 'text-anchor': 'middle' }, kisaTarih(x.gun)));
+  });
+  svg.append(s('polyline', { class: 'ch-l1', points: l1.map((q, i) => cx(i) + ',' + y(q)).join(' ') }),
+    s('polyline', { class: 'ch-l2 ' + (cizgi === 'y' ? 'y' : 'd'), points: l2.map((q, i) => cx(i) + ',' + y(q)).join(' ') }));
+  return svg;
+}
+
+function haftaDersGrafik(w) {
+  const W = 560, H = 240, L = 38, R = 14, T = 20, B = 36;
+  const max = Math.max(10, ...w.map(x => x.toplam)) * 1.12;
+  const adim = nice(max / 4);
+  const y = v => T + (H - T - B) * (1 - v / max);
+  const bw = (W - L - R) / w.length;
+  const svg = s('svg', { viewBox: '0 0 ' + W + ' ' + H, role: 'img', class: 'chart', 'aria-label': 'Haftalık çözülen soru sayısı, derslere göre yığılmış, son ' + w.length + ' hafta' });
+  for (let t = 0; t <= max; t += adim) {
+    svg.append(s('line', { class: 'ch-grid', x1: L, x2: W - R, y1: y(t), y2: y(t) }), s('text', { class: 'ch-mut', x: L - 6, y: y(t) + 4, 'text-anchor': 'end' }, String(Math.round(t))));
+  }
+  w.forEach((x, i) => {
+    const bx = L + i * bw + bw * 0.18, bwid = bw * 0.64;
+    let alt = 0;
+    for (const d of D) {
+      const n = x[d.id];
+      if (!n) continue;
+      const y1 = y(alt + n), y0 = y(alt);
+      svg.append(s('rect', { x: bx, y: y1, width: bwid, height: Math.max(0, y0 - y1), fill: DERS_RENK[d.id], style: 'stroke:var(--card);stroke-width:1' }, s('title', null, d.ad + ': ' + n + ' soru')));
+      alt += n;
+    }
+    if (x.toplam > 0) svg.append(s('text', { class: 'ch-txt', x: bx + bwid / 2, y: y(x.toplam) - 4, 'text-anchor': 'middle' }, String(x.toplam)));
+    svg.append(s('text', { class: x.guncel ? 'ch-txt b' : 'ch-mut', x: bx + bwid / 2, y: H - 14, 'text-anchor': 'middle' }, kisaTarih(x.bas)));
+  });
+  return svg;
+}
+
+function sorularKarti(oz, hedefQ) {
+  const st = { mod: 'gunluk', aralik: 30, cizgi: 'y' };
+  const kap = h('section', { class: 'card' }, h('h2', { text: 'Çözülen soru sayısı' }));
+  const kontrol = h('div', { class: 'toolbar' });
+  const govde = h('div');
+  const dugme = (t, aktif, f) => h('button', { type: 'button', class: 'btn kucuk' + (aktif ? ' birincil' : ''), 'aria-pressed': String(aktif), text: t, onClick: f });
+  function ciz() {
+    kontrol.replaceChildren(
+      dugme('Günlük', st.mod === 'gunluk', () => { st.mod = 'gunluk'; ciz(); }),
+      dugme('Haftalık', st.mod === 'haftalik', () => { st.mod = 'haftalik'; ciz(); }),
+      ...(st.mod === 'gunluk' ? [
+        h('select', { 'aria-label': 'Gün aralığı', onChange: e => { st.aralik = Number(e.target.value); ciz(); }, value: String(st.aralik) },
+          [14, 30, 60, 90].map(n => h('option', { value: String(n), text: 'Son ' + n + ' gün' }))),
+        dugme('Yanlış çizgisi', st.cizgi === 'y', () => { st.cizgi = 'y'; ciz(); }),
+        dugme('Doğru çizgisi', st.cizgi === 'd', () => { st.cizgi = 'd'; ciz(); })
+      ] : []));
+    govde.replaceChildren();
+    if (st.mod === 'haftalik') {
+      govde.append(haftaGrafik(oz.haftalar, hedefQ), h('small', { class: 'hint', text: 'Hafta Cumartesi–Cuma. Son sütun bu haftadır, henüz sürüyor.' }));
+      return;
+    }
+    const tum = oz.gunluk, v = tum.slice(tum.length - st.aralik);
+    const t = v.reduce((a, x) => ({ soru: a.soru + x.soru, d: a.d + x.d, y: a.y + x.y }), { soru: 0, d: 0, y: 0 });
+    const ikinci = st.cizgi === 'y' ? 'Yanlış' : 'Doğru';
+    govde.append(gunlukGrafik(tum, st.aralik, st.cizgi),
+      h('div', { class: 'lejant' },
+        h('span', { class: 'lej' }, h('i', { style: 'background:var(--blue);opacity:.45' }), 'Günlük toplam soru'),
+        h('span', { class: 'lej' }, lejOrnek('ch-l1'), 'Toplam soru eğilimi'),
+        h('span', { class: 'lej' }, lejOrnek('ch-l2 ' + st.cizgi), ikinci + ' eğilimi')),
+      h('small', { class: 'hint', text: 'Çizgiler son 7 günün günlük ortalamasını gösterir. Son ' + st.aralik + ' günde ' + t.soru + ' soru: ' + t.d + ' doğru, ' + t.y + ' yanlış' + (t.soru ? ' (yanlış oranı ' + yuzde(t.y / t.soru) + ')' : '') + '. Geçmişe dönük girilen kayıtlar kendi gününde görünür.' }));
+  }
+  ciz();
+  kap.append(kontrol, govde);
+  return kap;
+}
+
+/* ---------- Konu bazlı durum: sıralanabilir, konuya tıklayınca nedenler ---------- */
+function konuKarti(oz, durum, degisti) {
+  const kap = h('div');
+  const st = { gorunum: 'konu', k: 'basari', yon: 1 };
+  const tum = LGS.kayitSatirlari(oz.oturumlar).map(r => ({ ...r, basari: r.soru ? r.d / r.soru : null }));
+  const sec = h('select', { 'aria-label': 'Derse göre süz' }, h('option', { value: '', text: 'Tüm dersler' }), D.map(d => h('option', { value: d.id, text: d.ad })));
+  const kontrol = h('div', { class: 'toolbar' });
+  const govde = h('div');
+  const secili = r => !!durum.sec && durum.sec.ders === r.ders && durum.sec.konu === r.konu;
+  const sec_ = r => { durum.sec = secili(r) ? null : { ders: r.ders, konu: r.konu }; ciz(); degisti(); };
+  const AZALAN = ['soru', 'd', 'y', 'b', 'hiz', 'son', 'tarih'];
+
+  function sirala(liste) {
+    const deger = r => (st.k === 'ders' ? D.findIndex(x => x.id === r.ders) : r[st.k]);
+    return liste.slice().sort((a, b) => {
+      if (st.gorunum === 'konu' && st.k === 'basari' && ((a.soru >= 10) !== (b.soru >= 10))) return a.soru >= 10 ? -1 : 1;
+      const x = deger(a), y = deger(b);
+      if (x == null && y == null) return 0;
+      if (x == null) return 1;
+      if (y == null) return -1;
+      const c = typeof x === 'string' ? x.localeCompare(y, 'tr') : x - y;
+      return (c * st.yon) || (D.findIndex(q => q.id === a.ders) - D.findIndex(q => q.id === b.ders)) || String(a.konu).localeCompare(String(b.konu), 'tr');
+    });
+  }
+  function baslik(cols) {
+    return h('thead', null, h('tr', null, cols.map(([k, ad, sayisal]) => {
+      if (!k) return h('th', { scope: 'col', text: ad });
+      const aktif = st.k === k;
+      return h('th', { scope: 'col', class: sayisal ? 'sayi' : '', 'aria-sort': aktif ? (st.yon > 0 ? 'ascending' : 'descending') : 'none' },
+        h('button', { type: 'button', class: 'thbtn', title: ad + ' sütununa göre sırala', onClick: () => {
+          if (st.k === k) st.yon = -st.yon; else { st.k = k; st.yon = AZALAN.includes(k) ? -1 : 1; }
+          ciz();
+        } }, ad + (aktif ? (st.yon > 0 ? ' ▲' : ' ▼') : '')));
+    })));
+  }
+  const konuBtn = (r, ek) => h('td', null, h('button', { type: 'button', class: 'konubtn', 'aria-pressed': String(secili(r)), title: 'Yalnızca bu konunun hata ve boş nedenlerini göster', onClick: () => sec_(r) }, r.konu),
+    ek ? h('span', { class: 'hint', text: ' ' + ek }) : null);
+  const basariHucre = r => h('td', null, h('div', { class: 'bar', role: 'img', 'aria-label': yuzde(r.basari) }, h('div', { class: 'fill', style: 'width:' + Math.round(100 * (r.basari || 0)) + '%' })),
+    h('span', { class: 'bar-t', text: yuzde(r.basari) + (r.soru < 10 ? ' (az veri)' : '') }));
+
+  function detay(k) {
+    const kayit = tum.filter(r => r.ders === k.ders && r.konu === k.konu).sort((a, b) => (a.tarih < b.tarih ? 1 : a.tarih > b.tarih ? -1 : 0));
+    return h('div', null, h('strong', { text: dm(k.ders) + ' · ' + k.konu + ' — gün gün kayıtlar ve nedenler' }),
+      h('ul', { class: 'liste', style: 'margin-top:8px' }, kayit.map(r => h('li', null,
+        h('div', null, h('strong', { text: kisaTarih(r.tarih) + ' ' + gunAdi(r.tarih) }),
+          h('span', { class: 'hint', text: ' · ' + (r.tur === 'deneme' ? 'Deneme: ' + r.ad : 'Konu çalışması') + ' · ' + r.soru + ' soru · ' + r.d + ' D, ' + r.y + ' Y, ' + r.b + ' B' })),
+        nedenChips(r.hatalar)))));
+  }
+
+  function ciz() {
+    const gun = st.gorunum === 'gun';
+    const gec = (g) => () => { st.gorunum = g; st.k = g === 'konu' ? 'basari' : 'tarih'; st.yon = g === 'konu' ? 1 : -1; ciz(); };
+    kontrol.replaceChildren(
+      h('div', { class: 'toggle', style: 'margin-bottom:0' },
+        h('button', { type: 'button', 'aria-pressed': String(!gun), text: 'Konu bazlı', onClick: gec('konu') }),
+        h('button', { type: 'button', 'aria-pressed': String(gun), text: 'Gün bazlı', onClick: gec('gun') })),
+      sec,
+      durum.sec ? h('button', { class: 'btn kucuk', type: 'button', text: 'Konu seçimini kaldır', onClick: () => { durum.sec = null; ciz(); degisti(); } }) : null);
+    govde.replaceChildren();
+    let liste = gun ? tum.filter(r => r.soru > 0 && (!sec.value || r.ders === sec.value)) : oz.konular.filter(k => k.soru > 0 && (!sec.value || k.ders === sec.value));
+    if (!liste.length) { govde.append(h('p', { class: 'bos', text: 'Bu seçim için konu verisi yok.' })); return; }
+    liste = sirala(liste);
+    if (gun) {
+      const cols = [['tarih', 'Tarih'], ['ders', 'Ders'], ['konu', 'Konu'], ['soru', 'Soru', 1], ['d', 'D', 1], ['y', 'Y', 1], ['b', 'B', 1], ['basari', 'Başarı'], [null, 'Nedenler']];
+      govde.append(h('div', { class: 'tablo-kap' }, h('table', null, baslik(cols), h('tbody', null, liste.map(r => h('tr', { class: (r.soru < 10 ? 'az ' : '') + (secili(r) ? 'sec' : '') },
+        h('td', { text: kisaTarih(r.tarih) + ' ' + gunAdi(r.tarih) }), h('td', { text: dm(r.ders) }), konuBtn(r, r.tur === 'deneme' ? '(deneme)' : ''),
+        h('td', { class: 'sayi', text: String(r.soru) }), h('td', { class: 'sayi', text: String(r.d) }), h('td', { class: 'sayi', text: String(r.y) }), h('td', { class: 'sayi', text: String(r.b) }),
+        basariHucre(r), h('td', null, nedenChips(r.hatalar))))))));
+    } else {
+      const cols = [['ders', 'Ders'], ['konu', 'Konu'], ['soru', 'Soru', 1], ['d', 'D', 1], ['y', 'Y', 1], ['b', 'B', 1], ['basari', 'Başarı'], ['hiz', 'Soru/dk', 1], ['son', 'Son']];
+      govde.append(h('div', { class: 'tablo-kap' }, h('table', null, baslik(cols), h('tbody', null, liste.flatMap(k => [
+        h('tr', { class: (k.soru < 10 ? 'az ' : '') + (secili(k) ? 'sec' : '') },
+          h('td', { text: dm(k.ders) }), konuBtn(k), h('td', { class: 'sayi', text: String(k.soru) }),
+          h('td', { class: 'sayi', text: String(k.d) }), h('td', { class: 'sayi', text: String(k.y) }), h('td', { class: 'sayi', text: String(k.b) }),
+          basariHucre(k), h('td', { class: 'sayi', text: k.hiz == null ? '–' : LGS.fmt(k.hiz, 1) }), h('td', { text: k.son ? kisaTarih(k.son) : '' })),
+        secili(k) ? h('tr', { class: 'detay' }, h('td', { colspan: 9 }, detay(k))) : null
+      ])))));
+    }
+  }
+  sec.addEventListener('change', ciz);
+  kap.append(kontrol, h('small', { class: 'hint', text: 'Başlıklara tıklayarak sırala. Bir konuya tıklayınca yalnızca o konunun gün gün kayıtları ve hata/boş nedenleri açılır. 10 sorudan az veri olan konular soluk gösterilir, sonuç çıkarmak için yetersizdir.' }), govde);
+  ciz();
+  return { el: kart('Konu bazlı durum', kap), yenile: ciz };
 }
 
 const DURUM_AD = { geriliyor: '▼ Geriliyor', yukseliyor: '▲ Yükseliyor', sabit: '● Sabit', yetersiz: '? Yetersiz veri' };
@@ -847,9 +1084,13 @@ function trendKarti(oz) {
     yetersiz ? h('small', { class: 'hint', text: yetersiz + ' konuda karşılaştırma için yeterli veri yok (iki dönemde de en az ' + LGS.TREND.minSoru + ' soru gerekir). Fark ' + Math.round(100 * LGS.TREND.esik) + ' puana ulaşırsa yükseliş/gerileme sayılır.' }) : null);
 }
 
-function hataKarti(oz) {
-  const hd = oz.hata;
-  if (!hd.adet) return kart('Hata ve boş nedenleri', h('p', { class: 'bos', text: 'Henüz yanlış veya boş soru girilmedi.' }));
+function hataKarti(oz, sec) {
+  let hd = oz.hata, baslik = 'Hata ve boş nedenleri';
+  if (sec) {
+    hd = LGS.hataDagilimi(oz.oturumlar.map(o => ({ hatalar: o.hatalar.filter(x => x.ders === sec.ders && x.konu === sec.konu) })));
+    baslik = dm(sec.ders) + ' · ' + sec.konu + ' · hata ve boş nedenleri';
+  }
+  if (!hd.adet) return kart(baslik, h('p', { class: 'bos', text: sec ? 'Bu konuda yanlış veya boş soru girilmemiş.' : 'Henüz yanlış veya boş soru girilmedi.' }));
   const max = Math.max(...Object.values(hd.toplam));
   const barlar = NEDEN_SIRA.filter(k => hd.toplam[k]).map(k => h('div', { class: 'hbar' },
     h('span', { class: 'hbar-l', text: NEDEN_AD[k] }),
@@ -859,8 +1100,9 @@ function hataKarti(oz) {
   const dersSatirlari = D.filter(d => hd.dersler[d.id]).map(d => h('tr', null, h('td', { text: d.ad }),
     kolonlar.map(k => h('td', { class: 'sayi', text: String(hd.dersler[d.id][k] || 0) })),
     h('td', { class: 'sayi b', text: String(Object.values(hd.dersler[d.id]).reduce((a, b) => a + b, 0)) })));
-  return kart('Hata ve boş nedenleri', h('div', { class: 'hbars' }, barlar),
-    h('h3', { text: 'Ders bazlı dağılım' }), tablo(['Ders', ...kolonlar.map(k => NEDEN_AD[k]), 'Toplam'], dersSatirlari));
+  return kart(baslik, h('div', { class: 'hbars' }, barlar),
+    sec ? h('small', { class: 'hint', text: 'Yalnızca seçili konu gösteriliyor. Tümüne dönmek için Konu bazlı durum kartındaki "Konu seçimini kaldır" düğmesini kullan.' }) : null,
+    sec ? null : h('h3', { text: 'Ders bazlı dağılım' }), sec ? null : tablo(['Ders', ...kolonlar.map(k => NEDEN_AD[k]), 'Toplam'], dersSatirlari));
 }
 
 function denemeKarti(oz) {
@@ -891,13 +1133,22 @@ function ozet(root, oz, hedef) {
     root.append(kart('Dikkat edilecekler', h('ul', { class: 'uyari-liste' }, oz.uyarilar.map(u => h('li', { class: u.seviye },
       h('span', { class: 'etiket', text: u.seviye === 'uyari' ? 'Dikkat' : 'Bilgi' }), ' ' + u.metin)))));
   }
-  root.append(kart('Haftalık soru sayısı', haftaGrafik(w, hedef && hedef.haftalikSoru),
-    h('small', { class: 'hint', text: 'Hafta Cumartesi–Cuma. Son sütun bu haftadır, henüz sürüyor.' })));
-  root.append(denemeKarti(oz), trendKarti(oz), konuKarti(oz), hataKarti(oz));
+  root.append(sorularKarti(oz, hedef && hedef.haftalikSoru));
+  const durum = { sec: null };
+  const hataYer = h('div');
+  const yenileHata = () => hataYer.replaceChildren(hataKarti(oz, durum.sec));
+  const kk = konuKarti(oz, durum, yenileHata);
+  yenileHata();
+  root.append(denemeKarti(oz), trendKarti(oz), kk.el, hataYer);
   if (oz.hiz.length) {
-    root.append(kart('Çözüm hızı (konu çalışmaları)', tablo(['Ders', 'Soru', 'Soru/dakika'],
-      oz.hiz.map(x => h('tr', null, h('td', { text: dm(x.ders) }), h('td', { class: 'sayi', text: String(x.soru) }), h('td', { class: 'sayi', text: LGS.fmt(x.hiz, 1) }))))));
+    root.append(kart('Çözüm hızı (konu çalışmaları)', tablo(['Ders', 'Soru', 'Soru/dk', 'Yanlış oranı', 'Doğru soru/dk'],
+      oz.hiz.map(x => h('tr', null, h('td', { text: dm(x.ders) }), h('td', { class: 'sayi', text: String(x.soru) }), h('td', { class: 'sayi', text: LGS.fmt(x.hiz, 1) }),
+        h('td', { class: 'sayi', text: yuzde(x.y / x.soru) }), h('td', { class: 'sayi', text: LGS.fmt(x.hiz * x.d / x.soru, 1) })))),
+      h('small', { class: 'hint', text: 'Yanlış oranı = yanlış ÷ çözülen soru. Doğru soru/dk = hız × doğru oranı; hızlanırken yanlış oranı artıyorsa bu değer düşer, yani hız gerçek verime dönüşmüyordur.' })));
   }
+  root.append(kart('Haftalık soru dağılımı (derslere göre)', haftaDersGrafik(oz.haftalarDers),
+    h('div', { class: 'lejant' }, D.map(d => h('span', { class: 'lej' }, h('i', { style: 'background:' + DERS_RENK[d.id] }), d.ad))),
+    h('small', { class: 'hint', text: 'Son 8 hafta, deneme ve konu çalışmaları birlikte. Çubuğun üstündeki sayı haftalık toplamdır.' })));
   root.append(kart('Tekrar zamanı gelen konular', oz.tekrar.length
     ? tablo(['Ders', 'Konu', 'Son çalışma', 'Tekrar'], oz.tekrar.map(t => h('tr', null, h('td', { text: dm(t.ders) }), h('td', { text: t.konu }), h('td', { text: kisaTarih(t.son) + ' (' + t.gun + ' gün önce)' }), h('td', { text: t.tur + ' sonra' }))))
     : h('p', { class: 'bos', text: 'Şu an tekrar zamanı gelen konu yok. Konu 1 hafta ve 3 hafta sonra burada görünür.' })));
