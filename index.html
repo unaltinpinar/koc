@@ -1175,6 +1175,15 @@ function hedefTemiz(x) {
   const r = LGS.icerikOku({ format: 'lgs-hedef', kod: 'X', haftalikSoru: x.haftalikSoru, odak: x.odak, not: x.not, tarih: x.tarih });
   return r.tur === 'hedef' ? r.hedef : null;
 }
+function etkTemiz(m) {
+  const c = {};
+  if (!m || typeof m !== 'object') return c;
+  for (const [id, e] of Object.entries(m)) {
+    if (!/^[a-z0-9]{6,40}$/.test(id) || !e || typeof e !== 'object') continue;
+    c[id] = { gorulme: Number(e.gorulme) > 0 ? Number(e.gorulme) : 0, mesaj: LGS.kisalt(e.mesaj, 300), mesajZaman: Number(e.mesajZaman) > 0 ? Number(e.mesajZaman) : 0 };
+  }
+  return c;
+}
 function temizK(j) {
   j = j || {};
   const og = {};
@@ -1184,6 +1193,7 @@ function temizK(j) {
       etiket: LGS.kisalt(v.etiket, 40),
       oturumlar: (Array.isArray(v.oturumlar) ? v.oturumlar : []).map(o => LGS.temizOturum(o, FAR)).filter(Boolean),
       hedef: hedefTemiz(v.hedef),
+      etk: etkTemiz(v.etk),
       notlar: (Array.isArray(v.notlar) ? v.notlar : []).filter(n => n && typeof n.metin === 'string').map(n => ({
         id: LGS.kisalt(String(n.id), 40) || LGS.uid(), tarih: LGS.tarihGecerli(n.tarih) ? n.tarih : LGS.bugun(),
         tur: n.tur === 'ai' ? 'ai' : 'not', metin: LGS.kisalt(n.metin, 4000) }))
@@ -1201,7 +1211,7 @@ let esitleniyor = false, sonHata = '', sonSenkron = 0;
 let yeniPinler = null;        /* yalnızca bu oturumda, bir kez gösterilir */
 const kaydet = () => UI.save(KEY, K);
 const ogr = kod => K.ogrenciler[kod];
-const ogrBos = () => ({ etiket: '', oturumlar: [], hedef: null, notlar: [] });
+const ogrBos = () => ({ etiket: '', oturumlar: [], hedef: null, etk: {}, notlar: [] });
 const sSor = (islem, ek) => Sunucu.cagri({ islem, anahtar, ...ek });
 async function esitle(tam, sessiz) {
   let degisti = !sessiz;
@@ -1227,6 +1237,13 @@ async function esitle(tam, sessiz) {
       const i = K.tanimlar.findIndex(x => x.id === t.id);
       if (i >= 0) K.tanimlar[i] = t; else K.tanimlar.push(t);
     }
+    for (const e of Array.isArray(j.etkilesim) ? j.etkilesim : []) {
+      if (!e || typeof e.id !== 'string' || !LGS.kodGecerli(e.kod) || !ogr(e.kod.toUpperCase())) continue;
+      const o = ogr(e.kod.toUpperCase());
+      o.etk = o.etk || {};
+      const t = etkTemiz({ [e.id]: e })[e.id];
+      if (t) { o.etk[e.id] = t; degisti = true; }
+    }
     if (yeni) degisti = true;
     K.sonOku = Math.max(0, Number(j.zaman) - 60000) || 0;
     sonSenkron = Date.now(); sonHata = '';
@@ -1247,6 +1264,72 @@ function durumMetni() {
 function durumYaz() { const el = document.getElementById('durum'); if (el) el.textContent = durumMetni(); const b = document.getElementById('esitleBtn'); if (b) b.disabled = esitleniyor; }
 const ad = kod => (ogr(kod).etiket ? ogr(kod).etiket + ' (' + kod + ')' : kod);
 
+/* ---------- Gelen kutusu: görüldü işareti ve öğrenci mesajları ---------- */
+const etkOf = (kod, id) => (ogr(kod).etk && ogr(kod).etk[id]) || null;
+const gorulduMu = (kod, id) => { const e = etkOf(kod, id); return !!(e && e.gorulme > 0); };
+function okunmamisSayi(kod) {
+  let n = 0;
+  for (const k of kod ? [kod] : Object.keys(K.ogrenciler)) for (const o of ogr(k).oturumlar) if (!gorulduMu(k, o.id)) n++;
+  return n;
+}
+const zamanTR = ms => new Date(ms).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+async function gordumIsaretle(liste) { /* liste: [{kod, id}] */
+  if (!liste.length) return;
+  try {
+    let zaman = Date.now(), sayi = 0;
+    for (let i = 0; i < liste.length; i += 200) {
+      const parca = liste.slice(i, i + 200);
+      const j = await sSor('o-gordum', { idler: parca.map(x => x.id) });
+      zaman = Number(j.gorulme) || zaman;
+      const ok = new Set(Array.isArray(j.islenen) ? j.islenen : []);
+      for (const x of parca) if (ok.has(x.id)) {
+        const o = ogr(x.kod); o.etk = o.etk || {};
+        o.etk[x.id] = Object.assign({ mesaj: '', mesajZaman: 0 }, o.etk[x.id], { gorulme: zaman }); sayi++;
+      }
+    }
+    kaydet(); UI.toast(sayi + ' kayıt görüldü olarak işaretlendi');
+  } catch (e) { UI.toast('İşaretlenemedi: ' + e.message); }
+  ciz();
+}
+const gFiltre = { hepsi: false, kod: '' };
+function gelenGorunumu() {
+  const kodlar = Object.keys(K.ogrenciler).sort();
+  const tum = [];
+  for (const kod of kodlar) {
+    if (gFiltre.kod && gFiltre.kod !== kod) continue;
+    for (const o of ogr(kod).oturumlar) tum.push({ kod, o, e: etkOf(kod, o.id), yeni: !gorulduMu(kod, o.id) });
+  }
+  const liste = tum.filter(x => gFiltre.hepsi || x.yeni)
+    .sort((a, b) => (b.yeni - a.yeni) || (a.o.tarih < b.o.tarih ? 1 : a.o.tarih > b.o.tarih ? -1 : 0) || (a.o.id < b.o.id ? 1 : -1));
+  const yeniler = liste.filter(x => x.yeni);
+  const GOSTER = 150;
+  const filtre = h('select', { 'aria-label': 'Öğrenciye göre süz', onChange: e => { gFiltre.kod = e.target.value; ciz(); }, value: gFiltre.kod },
+    h('option', { value: '', text: 'Tüm öğrenciler' }), kodlar.map(k => h('option', { value: k, text: ad(k) })));
+  const gecis = h('div', { class: 'toggle', style: 'margin-bottom:0' },
+    h('button', { type: 'button', 'aria-pressed': String(!gFiltre.hepsi), text: 'Görülmeyenler', onClick: () => { gFiltre.hepsi = false; ciz(); } }),
+    h('button', { type: 'button', 'aria-pressed': String(gFiltre.hepsi), text: 'Tümü', onClick: () => { gFiltre.hepsi = true; ciz(); } }));
+  const toplu = h('button', { class: 'btn kucuk birincil', type: 'button', text: 'Listedeki ' + yeniler.length + ' kaydı gördüm', disabled: !yeniler.length,
+    onClick: () => { if (yeniler.length < 6 || confirm(yeniler.length + ' kayıt görüldü olarak işaretlensin mi?')) gordumIsaretle(yeniler.map(x => ({ kod: x.kod, id: x.o.id }))); } });
+  const satir = x => {
+    const o = x.o, ds = o.bolumler.reduce((a, b) => ({ d: a.d + b.d, y: a.y + b.y, b: a.b + b.b }), { d: 0, y: 0, b: 0 });
+    const baslik = o.tur === 'deneme' ? 'Deneme · ' + o.ad : LGS.dersBul(o.bolumler[0].ders).ad + ' · ' + o.bolumler[0].konu;
+    const mesajlar = [o.not ? ['Kayıt notu', o.not] : null, x.e && x.e.mesaj ? ['Mesaj' + (x.e.mesajZaman ? ' · ' + zamanTR(x.e.mesajZaman) : ''), x.e.mesaj] : null].filter(Boolean);
+    return h('li', { style: x.yeni ? 'border-left:5px solid var(--or)' : '' },
+      h('div', { style: 'flex:1 1 300px;min-width:0' },
+        h('div', null, h('strong', { text: ad(x.kod) }), h('span', { text: ' · ' + baslik })),
+        h('div', { class: 'hint', text: LGS.tarihTR(o.tarih) + ' · ' + ds.d + 'D ' + ds.y + 'Y ' + ds.b + 'B · net ' + LGS.fmt(LGS.net(ds.d, ds.y)) + (o.sure ? ' · ' + o.sure + ' dk' : '') }),
+        mesajlar.map(m => h('div', { style: 'margin-top:6px;white-space:pre-wrap' }, h('span', { class: 'etiket', text: m[0] }), ' ' + m[1]))),
+      x.yeni
+        ? h('button', { class: 'btn kucuk birincil', type: 'button', text: 'Gördüm ✓', 'aria-label': ad(x.kod) + ' kaydını gördüm olarak işaretle', onClick: () => gordumIsaretle([{ kod: x.kod, id: o.id }]) })
+        : h('span', { class: 'hint', text: '✓ Görüldü ' + zamanTR(x.e.gorulme) }));
+  };
+  return Panel.kart('Gelen kayıtlar · ' + okunmamisSayi(gFiltre.kod) + ' görülmemiş',
+    h('div', { class: 'toolbar' }, gecis, filtre, toplu),
+    liste.length ? h('ul', { class: 'liste' }, liste.slice(0, GOSTER).map(satir)) : h('p', { class: 'bos', text: gFiltre.hepsi ? 'Kayıt yok.' : 'Görülmemiş kayıt yok.' }),
+    liste.length > GOSTER ? h('small', { class: 'hint', text: 'İlk ' + GOSTER + ' kayıt gösteriliyor; kalanlar için öğrenciye göre süz.' }) : null,
+    h('small', { class: 'hint', text: 'Gördüm işareti öğrencinin Geçmiş sekmesinde görünür. Öğrenci bir kayda mesaj bırakırsa o kayıt yeniden görülmemiş olur.' }));
+}
+
 /* ---------- Sınıf listesi ---------- */
 function sinifGorunumu() {
   const kodlar = Object.keys(K.ogrenciler);
@@ -1260,9 +1343,10 @@ function sinifGorunumu() {
     return { kod, oz, son, onc, sd, od, dikkat, hedef: o.hedef };
   }).sort((a, b) => b.dikkat - a.dikkat || (b.oz.gunOnce || 0) - (a.oz.gunOnce || 0) || (a.kod < b.kod ? -1 : 1));
   return Panel.kart('Sınıf (' + kodlar.length + ' öğrenci) · en çok dikkat isteyenler üstte', Panel.tablo(
-    ['Öğrenci', 'Son kayıt', 'Bu hafta / geçen hafta', 'Son deneme', 'Dikkat', ''],
+    [...['Öğrenci'], ...(ONLINE ? ['Yeni'] : []), 'Son kayıt', 'Bu hafta / geçen hafta', 'Son deneme', 'Dikkat', ''],
     satirlar.map(r => h('tr', null,
       h('td', null, h('strong', { text: ad(r.kod) })),
+      ONLINE ? h('td', { class: 'sayi', text: okunmamisSayi(r.kod) ? String(okunmamisSayi(r.kod)) : '–' }) : null,
       h('td', { text: r.oz.gunOnce == null ? '–' : r.oz.gunOnce === 0 ? 'bugün' : r.oz.gunOnce + ' gün önce' }),
       h('td', { class: 'sayi', text: r.son.soru + ' / ' + r.onc.soru + (r.hedef && r.hedef.haftalikSoru ? ' (hedef ' + r.hedef.haftalikSoru + ')' : '') }),
       h('td', { text: r.sd ? LGS.fmt(r.sd.net) + (r.od ? ' (' + (r.sd.net - r.od.net >= 0 ? '+' : '−') + LGS.fmt(Math.abs(r.sd.net - r.od.net)) + ')' : '') : '–' }),
@@ -1447,7 +1531,7 @@ function aktarGorunumu() {
       let mesaj;
       if (r.tur === 'ogrenci') {
         const yeniOgr = !ogr(r.kod);
-        if (yeniOgr) K.ogrenciler[r.kod] = { etiket: '', oturumlar: [], hedef: null, notlar: [] };
+        if (yeniOgr) K.ogrenciler[r.kod] = ogrBos();
         const m = LGS.birlestir(ogr(r.kod).oturumlar, r.oturumlar);
         ogr(r.kod).oturumlar = m.oturumlar;
         mesaj = r.kod + ': ' + m.eklenen + ' yeni kayıt' + (yeniOgr ? ' (yeni öğrenci)' : '') + (r.atlanan ? ', ' + r.atlanan + ' bozuk kayıt atlandı' : '') + '.';
@@ -1536,7 +1620,7 @@ function girisEkrani() {
 /* ---------- İskelet ---------- */
 function ciz() {
   const girisYok = ONLINE && !anahtar;
-  const sekmeler = [['sinif', 'Sınıf'], ...(ONLINE ? [['hesap', 'Hesaplar']] : []), ['deneme', 'Deneme tanımları'], ['aktar', ONLINE ? 'Dosya ve yedek' : 'Aktar ve yedek']];
+  const sekmeler = [['sinif', 'Sınıf'], ...(ONLINE ? [['gelen', 'Gelen' + (okunmamisSayi() ? ' (' + okunmamisSayi() + ')' : '')]] : []), ...(ONLINE ? [['hesap', 'Hesaplar']] : []), ['deneme', 'Deneme tanımları'], ['aktar', ONLINE ? 'Dosya ve yedek' : 'Aktar ve yedek']];
   const aktif = gorunum === 'ogrenci' ? 'sinif' : gorunum;
   app.replaceChildren(h('div', { class: 'wrap' },
     h('header', { class: 'top' }, h('div', null, h('h1', { text: 'LGS Takip · Öğretmen' }), h('div', { class: 'sub', text: ONLINE ? 'Öğrencilerin sunucuya gönderdiği kayıtlar' : 'Haftalık dosyalardan sınıf ve öğrenci görünümü' })),
@@ -1546,7 +1630,7 @@ function ciz() {
           h('button', { class: 'btn kucuk', type: 'button', text: 'Anahtarı unut', onClick: () => { if (confirm('Anahtar bu tarayıcıdan silinsin mi? Veriler kalır.')) { anahtar = ''; UI.save(ANAHTAR_KEY, { a: '' }); yeniPinler = null; ciz(); } } }))) : null),
     girisYok ? null : h('nav', { class: 'sekmeler', 'aria-label': 'Bölümler' }, sekmeler.map(([id, t]) => h('button', { type: 'button', text: t, 'aria-current': aktif === id ? 'page' : null,
       onClick: () => { gorunum = id; ciz(); } }))),
-    h('main', { id: 'ana', tabindex: '-1' }, girisYok ? girisEkrani() : gorunum === 'sinif' ? sinifGorunumu() : gorunum === 'ogrenci' ? ogrenciGorunumu() : gorunum === 'hesap' && ONLINE ? hesapGorunumu() : gorunum === 'deneme' ? denemeGorunumu() : aktarGorunumu())));
+    h('main', { id: 'ana', tabindex: '-1' }, girisYok ? girisEkrani() : gorunum === 'sinif' ? sinifGorunumu() : gorunum === 'gelen' && ONLINE ? gelenGorunumu() : gorunum === 'ogrenci' ? ogrenciGorunumu() : gorunum === 'hesap' && ONLINE ? hesapGorunumu() : gorunum === 'deneme' ? denemeGorunumu() : aktarGorunumu())));
 }
 ciz();
 if (ONLINE && anahtar) esitle(false, true);
