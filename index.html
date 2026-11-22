@@ -1159,6 +1159,619 @@ return { ozet, kart, stat, tablo, NEDEN_AD };
 
 </script>
 <script>
+/* Manzara: ders başına izometrik konu arazisi. Yükseklik = çözülen soru (doğrusal), renk = hâkimiyet.
+   Zaman kaydırıcısı haftaya göre birikimli durumu gösterir. Veri: LGS.konuIstatistik (konu ve deneme kayıtları).
+   Bağımlılıklar: LGS, UI, Panel. Dışarıya tek giriş: Manzara.goster(oturumlar, { gir }). */
+const Manzara = (function () {
+'use strict';
+const { h } = UI;
+const D = LGS.DERSLER;
+const W = 120, DD = 56, NX = 100, NY = 47, NX1 = NX + 1, NV = NX1 * (NY + 1), FACT = 0.42, CELL = 25;
+const dx = W / NX, dy = DD / NY;
+const KEY = 'lgs_manzara_v1';
+const STOPS = [[0.40, 166, 50, 32], [0.55, 232, 128, 58], [0.70, 235, 190, 61], [0.85, 59, 175, 155], [0.95, 31, 95, 168]];
+const CASES = [[], [3, 0], [0, 1], [3, 1], [1, 2], [3, 0, 1, 2], [0, 2], [3, 2], [3, 2], [0, 2], [0, 1, 3, 2], [1, 2], [3, 1], [0, 1], [3, 0], []];
+const M = { ders: null, hafta: null, sel: null }; // ekran yenilense de seçimler korunur
+const onbellek = new Map();
+
+const CSS = `
+.mz-ust{display:flex;flex-wrap:wrap;gap:10px 20px;align-items:center;justify-content:space-between;margin-bottom:10px}
+.mz-chips{display:flex;flex-wrap:wrap;gap:6px}
+.mz-chip{font:inherit;font-weight:700;font-size:14px;min-height:44px;padding:6px 16px;border-radius:999px;border:1.5px solid var(--line);background:var(--card);color:var(--brand);cursor:pointer}
+.mz-chip:hover{background:var(--soft)}
+.mz-chip[aria-pressed=true]{background:var(--brand);border-color:var(--brand);color:var(--on-brand)}
+.mz-chip small{font-weight:600;opacity:.8;margin-left:4px}
+.mz-lej{flex:0 1 270px;min-width:200px}
+.mz-lej .cap{font-size:12px;color:var(--muted);margin-bottom:4px}
+.mz-bar{height:10px;border-radius:5px;background:linear-gradient(90deg,#A63220 14%,#E8803A 36%,#EBBE3D 57%,#3BAF9B 79%,#1F5FA8 93%)}
+.mz-tik{position:relative;height:18px;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.mz-tik span{position:absolute;top:3px;transform:translateX(-50%)}
+.mz-cv{display:block;width:100%}
+.mz-zaman{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.mz-zaman input[type=range]{flex:1 1 220px;min-width:160px;accent-color:var(--or);height:44px;margin:0}
+.mz-zaman .btn{min-width:96px}
+.mz-hafta{flex:1 1 100%;font-size:13.5px;color:var(--muted);font-variant-numeric:lining-nums tabular-nums}
+.mz-hafta b{color:var(--ink)}
+.mz-detay{margin:12px 0 0;padding:10px 14px;border-radius:10px;background:var(--soft);font-size:14px;min-height:44px}
+.mz-liste{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.mz-satir{width:100%;display:grid;grid-template-columns:14px minmax(0,1fr) auto;column-gap:10px;row-gap:4px;align-items:center;text-align:left;padding:8px 10px;border-radius:10px;border:1px solid transparent;background:transparent;cursor:pointer;min-height:44px;font:inherit;color:var(--ink)}
+.mz-satir:hover{background:var(--soft)}
+.mz-satir[aria-current=true]{background:var(--soft);border-color:var(--line)}
+.mz-satir .nokta{width:14px;height:14px;border-radius:4px}
+.mz-satir .ad{font-weight:600;min-width:0;overflow-wrap:anywhere}
+.mz-satir .sy{font-size:13px;color:var(--muted);font-variant-numeric:lining-nums tabular-nums;white-space:nowrap}
+.mz-satir .cb{grid-column:2 / 4;height:5px;border-radius:3px;background:var(--line);overflow:hidden}
+.mz-satir .cb i{display:block;height:100%;width:0;border-radius:3px}
+.mz-isikap{overflow-x:auto;margin:0 -4px;padding:0 4px}
+.mz-isi{border-collapse:separate;border-spacing:3px;min-width:700px;width:100%;font-variant-numeric:lining-nums tabular-nums}
+.mz-isi th{font-size:12px;font-weight:700;color:var(--muted);text-align:center;padding:2px 0;white-space:nowrap}
+.mz-isi th.k{text-align:left;position:sticky;left:0;background:var(--card);z-index:1;min-width:150px;padding-right:8px}
+.mz-isi td{height:42px;min-width:44px;text-align:center;border-radius:6px;font-size:12px;font-weight:800;line-height:1.15;padding:2px}
+.mz-isi td small{display:block;font-weight:600;font-size:10px;opacity:.85}
+.mz-isi td.bos{background:var(--soft);color:var(--muted);font-weight:500}
+.mz-isi td.top{min-width:132px}
+.mz-isi .konub{font:inherit;font-weight:600;text-align:left;background:none;border:none;color:var(--ink);cursor:pointer;padding:4px 0;min-height:36px;white-space:normal}
+.mz-isi .konub:hover{text-decoration:underline}
+.mz-bos{padding:18px;border:1px dashed var(--line);border-radius:12px;margin-bottom:14px}
+@media print{.mz-zaman .btn,.mz-chips,.mz-isikap{break-inside:avoid}.mz-zaman .btn,.mz-chips{display:none}}
+`;
+function cssEkle() {
+  if (document.getElementById('mz-css')) return;
+  const st = document.createElement('style'); st.id = 'mz-css'; st.textContent = CSS; document.head.appendChild(st);
+}
+
+/* ---------- Küçük yardımcılar ---------- */
+const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const ms = (n, c) => (n <= 0 ? null : n >= 10 ? c / n : (c + 2.5) / (n + 5)); // az soruda 50'ye doğru yumuşatılır
+const pct = m => Math.round(m * 100);
+const seviye = m => (m < 0.5 ? 'Zayıf' : m < 0.65 ? 'Gelişiyor' : m < 0.8 ? 'Orta' : m < 0.9 ? 'İyi' : 'Pekiyi');
+function pal(m) {
+  if (m <= STOPS[0][0]) return [STOPS[0][1], STOPS[0][2], STOPS[0][3]];
+  for (let i = 1; i < STOPS.length; i++) {
+    if (m <= STOPS[i][0]) {
+      const a = STOPS[i - 1], b = STOPS[i], f = (m - a[0]) / (b[0] - a[0]);
+      return [a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f, a[3] + (b[3] - a[3]) * f];
+    }
+  }
+  const l = STOPS[STOPS.length - 1]; return [l[1], l[2], l[3]];
+}
+const rgb = c => 'rgb(' + (c[0] | 0) + ',' + (c[1] | 0) + ',' + (c[2] | 0) + ')';
+function cssRenk(v) { // CSS değişkeni → [r,g,b]
+  const e = document.createElement('i');
+  e.style.color = 'var(' + v + ')'; document.body.appendChild(e);
+  const c = getComputedStyle(e).color; e.remove();
+  const m = c.match(/[\d.]+/g);
+  return m ? [+m[0], +m[1], +m[2]] : [128, 128, 128];
+}
+const lerp3 = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+const tarihKisa = t => LGS.tarihTR(t).slice(0, 5);
+
+/* ---------- Veri: haftaya göre birikimli konu istatistiği ---------- */
+function zamanVerisi(oturumlar) {
+  const ds = LGS.sirala(oturumlar), bugun = LGS.bugun(), son = LGS.haftaBasi(bugun);
+  let ilk = ds.length ? LGS.haftaBasi(ds[0].tarih) : son;
+  if (LGS.farkGun(son, ilk) > 7 * 79) ilk = LGS.gunEkle(son, -7 * 79);
+  const haftalar = [];
+  for (let w = ilk; LGS.farkGun(son, w) >= 0; w = LGS.gunEkle(w, 7)) haftalar.push(w);
+  const stat = haftalar.map((w, i) => {
+    const bit = i === haftalar.length - 1 ? '9999-12-31' : LGS.gunEkle(w, 6);
+    const m = new Map();
+    for (const k of LGS.konuIstatistik(ds.filter(o => o.tarih <= bit))) m.set(k.ders + '|' + k.konu, k);
+    return m;
+  });
+  return { ds, haftalar, stat };
+}
+function konuListesi(dersId, zm) {
+  const liste = (LGS.KONULAR[dersId] || []).slice();
+  for (const k of zm.stat[zm.stat.length - 1].values()) if (k.ders === dersId && !liste.includes(k.konu)) liste.push(k.konu);
+  return liste;
+}
+function dersToplami(zm, dersId) { // en çok soru çözülen ders ilk açılışta seçilir
+  let t = 0;
+  for (const k of zm.stat[zm.stat.length - 1].values()) if (k.ders === dersId) t += k.soru;
+  return t;
+}
+
+/* ---------- Yerleşim ve yükseklik alanı (derse göre önbelleğe alınır) ---------- */
+function yerlesim(n) {
+  const cols = Math.ceil(Math.sqrt(n * W / DD)), rows = Math.ceil(n / cols);
+  const cw = W / cols, ch = DD / rows, pos = [];
+  for (let i = 0; i < n; i++) {
+    const r = Math.floor(i / cols), c = i % cols;
+    const satirda = r === rows - 1 ? n - (rows - 1) * cols : cols;
+    pos.push({ x: (cols - satirda) * cw / 2 + (c + 0.5) * cw, y: (r + 0.5) * ch });
+  }
+  return { pos, sig: 0.31 * Math.min(cw, ch) };
+}
+function alan(n) {
+  if (onbellek.has(n)) return onbellek.get(n);
+  const Y = yerlesim(n), den = 2 * Y.sig * Y.sig, cut = Math.pow(3.2 * Y.sig, 2);
+  const G = [], Wt = [], gm = new Float32Array(NV), sum = new Float32Array(NV), ACT = new Float32Array(NV);
+  for (let k = 0; k < n; k++) {
+    const g = new Float32Array(NV);
+    for (let j = 0; j <= NY; j++) {
+      for (let i = 0; i <= NX; i++) {
+        const v = j * NX1 + i, d2 = Math.pow(i * dx - Y.pos[k].x, 2) + Math.pow(j * dy - Y.pos[k].y, 2);
+        g[v] = d2 > cut ? 0 : Math.exp(-d2 / den);
+      }
+    }
+    G.push(g);
+  }
+  for (let v = 0; v < NV; v++) {
+    let mx = 0, sm = 0;
+    for (let k = 0; k < n; k++) { const q = G[k][v]; if (q > mx) mx = q; sm += q * q * q; }
+    gm[v] = mx; sum[v] = sm; ACT[v] = smooth(0.03, 0.45, mx);
+  }
+  for (let k = 0; k < n; k++) {
+    const w = new Float32Array(NV);
+    for (let v = 0; v < NV; v++) { const q = G[k][v]; w[v] = sum[v] > 1e-12 ? (q * q * q) / sum[v] : 0; }
+    Wt.push(w);
+  }
+  const o = { pos: Y.pos, G, Wt, ACT };
+  onbellek.set(n, o);
+  return o;
+}
+
+/* ---------- Bileşen ---------- */
+function goster(oturumlar, opt) {
+  opt = opt || {};
+  const anim = opt.animasyon !== false; // öğretmen ekranında yükselme animasyonu ve cihaz kaydı yok
+  cssEkle();
+  const reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const zm = zamanVerisi(oturumlar);
+  const son = zm.haftalar.length - 1;
+  if (!M.ders || !LGS.dersBul(M.ders)) {
+    M.ders = D.slice().sort((a, b) => dersToplami(zm, b.id) - dersToplami(zm, a.id))[0].id;
+  }
+  let wi = M.hafta == null ? son : clamp(M.hafta, 0, son);
+  let calis = false, birikim = 0;
+
+  /* önceki gösterimde görülen yükseklikler: yalnızca yeni girişler yükselerek gelir */
+  const eski = anim ? ((UI.load(KEY) || {}).g || {}) : {};
+  const yeniKayit = {};
+  for (const [key, k] of zm.stat[son]) yeniKayit[key] = k.soru;
+
+  let konular = [], P = null, topics = [], C = 100;
+  const floaters = [], hits = [];
+  let T = {}, Wc = 0, Hc = 0, dpr = 1, zs = null;
+  let s = 1, sxk = 1, syk = 1, ox = 0, oy = 0, PX = 0, PY = 0;
+  let cx0 = 0, cy0 = 0, cx1 = 0, cy1 = 0, ch00 = 0, ch10 = 0, ch11 = 0, ch01 = 0, cL = 0;
+  const H = new Float32Array(NV), VC = new Float32Array(NV * 3), GND = new Float32Array(NV * 3);
+
+  const cv = h('canvas', { class: 'mz-cv', role: 'img', 'aria-label': 'Konu arazisi' });
+  const ctx = cv.getContext('2d');
+  const kutu = h('div', null, cv);
+
+  function hedefler() {
+    const st = zm.stat[wi];
+    topics.forEach(t => {
+      const k = st.get(M.ders + '|' + t.ad);
+      t.n = k ? k.soru : 0; t.c = k ? k.d : 0; t.yy = k ? k.y : 0; t.bb = k ? k.b : 0; t.son = k ? k.son : null;
+    });
+  }
+  function dersKur(ilk) {
+    konular = konuListesi(M.ders, zm);
+    P = alan(konular.length);
+    C = 60;
+    let mx = 0;
+    for (const k of zm.stat[son].values()) if (k.ders === M.ders && k.soru > mx) mx = k.soru;
+    C = Math.max(60, Math.ceil(mx * 1.15 / 20) * 20);
+    topics = konular.map((ad, i) => ({ ad, px: P.pos[i].x, py: P.pos[i].y, n: 0, c: 0, yy: 0, bb: 0, son: null, dn: 0, dm: null }));
+    hedefler();
+    topics.forEach(t => {
+      const g = eski[M.ders + '|' + t.ad];
+      t.dn = (ilk && wi === son && g != null && !reduce) ? Math.min(g, t.n) : t.n;
+      t.dm = ms(t.n, t.c);
+      if (t.dn < t.n - 0.5) floaters.push({ t, born: performance.now(), text: '+' + Math.round(t.n - t.dn) });
+    });
+    if (M.sel == null || M.sel >= topics.length) M.sel = 0;
+    zs = null;
+  }
+
+  function temaOku() {
+    const cs = (v) => cssRenk(v);
+    const bg = cs('--bg');
+    T.dark = (bg[0] + bg[1] + bg[2]) < 300;
+    T.card = rgb(cs('--card')); T.ink = rgb(cs('--ink')); T.muted = rgb(cs('--muted')); T.line = rgb(cs('--line'));
+    T.accent = rgb(cs('--or')); T.focus = rgb(cs('--focus'));
+    const g0 = cs('--soft'), g1 = cs('--sky');
+    T.lot = lerp3(cs('--line'), cs('--muted'), 0.35);
+    T.mid = lerp3(g0, g1, 0.5);
+    T.contour = T.dark ? 'rgba(255,255,255,0.30)' : 'rgba(11,31,58,0.34)';
+    T.contourIdx = T.dark ? 'rgba(255,255,255,0.62)' : 'rgba(11,31,58,0.68)';
+    T.fl = T.dark ? '#5FD3BC' : '#1B6A5C';
+    T.font = getComputedStyle(document.body).fontFamily || 'system-ui, sans-serif';
+    for (let j = 0; j <= NY; j++) for (let i = 0; i <= NX; i++) {
+      const c = lerp3(g0, g1, smooth(10, 110, i * dx)), v = (j * NX1 + i) * 3;
+      GND[v] = c[0]; GND[v + 1] = c[1]; GND[v + 2] = c[2];
+    }
+  }
+  function boyut() {
+    const r = kutu.getBoundingClientRect();
+    Wc = Math.floor(r.width);
+    if (Wc < 1) return;
+    Hc = Wc < 560 ? Math.round(Wc * 0.95) : Math.round(Wc * 0.55);
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = Math.round(Wc * dpr); cv.height = Math.round(Hc * dpr); cv.style.height = Hc + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  function duzen() {
+    const compact = Wc < 620, tm = compact ? 44 : 64, bm = compact ? 34 : 40;
+    const sW = 0.95 * Wc / (0.866 * (W + DD)), sH = (0.70 * Hc - bm - tm) / (144 * FACT);
+    s = Math.min(sW, sH); sxk = 0.866 * s; syk = FACT * s;
+    ox = Wc / 2 - ((W - DD) / 2) * sxk; oy = Hc - bm - (W + DD) * syk;
+    let zt = 1e9;
+    for (const t of topics) { const z = (oy + (t.px + t.py) * syk - tm) / C; if (z < zt) zt = z; }
+    return { zt: Math.max(0.15, zt), compact };
+  }
+  function adim(dt, L) {
+    const k = reduce ? 1 : 1 - Math.exp(-dt / 0.22);
+    let hareket = false;
+    for (const t of topics) {
+      const d = t.n - t.dn;
+      if (Math.abs(d) > 0.02) { t.dn += d * k; hareket = true; } else t.dn = t.n;
+      const m = ms(t.n, t.c);
+      if (m === null) t.dm = null;
+      else {
+        if (t.dm === null) t.dm = m;
+        const e = m - t.dm;
+        if (Math.abs(e) > 0.001) { t.dm += e * k; hareket = true; } else t.dm = m;
+      }
+    }
+    if (zs === null || reduce) zs = L.zt;
+    else { const ez = L.zt - zs; if (Math.abs(ez) > 0.001) { zs += ez * (1 - Math.exp(-dt / 0.35)); hareket = true; } else zs = L.zt; }
+    return hareket;
+  }
+  function kenarNokta(e) {
+    let t, x, y;
+    if (e === 0) { t = (cL - ch00) / (ch10 - ch00); x = cx0 + (cx1 - cx0) * t; y = cy0; }
+    else if (e === 1) { t = (cL - ch10) / (ch11 - ch10); x = cx1; y = cy0 + (cy1 - cy0) * t; }
+    else if (e === 2) { t = (cL - ch01) / (ch11 - ch01); x = cx0 + (cx1 - cx0) * t; y = cy1; }
+    else { t = (cL - ch00) / (ch01 - ch00); x = cx0; y = cy0 + (cy1 - cy0) * t; }
+    PX = ox + (x - y) * sxk; PY = oy + (x + y) * syk - cL * zs;
+  }
+  function segEkle(arr, e1, e2) { kenarNokta(e1); arr.push(PX, PY); kenarNokta(e2); arr.push(PX, PY); }
+  function segCiz(arr, stil, w) {
+    if (!arr.length) return;
+    ctx.beginPath();
+    for (let q = 0; q < arr.length; q += 4) { ctx.moveTo(arr[q], arr[q + 1]); ctx.lineTo(arr[q + 2], arr[q + 3]); }
+    ctx.strokeStyle = stil; ctx.lineWidth = w; ctx.stroke();
+  }
+  function yuvarla(x, y, w, hh, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + hh, r); ctx.arcTo(x + w, y + hh, x, y + hh, r);
+    ctx.arcTo(x, y + hh, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+
+  function ciz(now, L) {
+    if (!Wc) return;
+    ctx.clearRect(0, 0, Wc, Hc);
+    const n = topics.length, { G, Wt, ACT } = P;
+    H.fill(0);
+    for (let k = 0; k < n; k++) {
+      const dn = topics[k].dn;
+      if (dn > 0) { const g = G[k]; for (let v = 0; v < NV; v++) H[v] += dn * g[v]; }
+    }
+    const TR = [], TG = [], TB = [];
+    for (let k = 0; k < n; k++) {
+      const t = topics[k], col = (t.n <= 0 || t.dm === null) ? T.lot : pal(t.dm);
+      TR[k] = col[0]; TG[k] = col[1]; TB[k] = col[2];
+    }
+    for (let v = 0; v < NV; v++) {
+      let r = 0, g = 0, b = 0; const a = ACT[v];
+      if (a > 0) for (let k = 0; k < n; k++) { const w = Wt[k][v]; if (w > 0) { r += w * TR[k]; g += w * TG[k]; b += w * TB[k]; } }
+      const v3 = v * 3;
+      VC[v3] = GND[v3] * (1 - a) + r * a; VC[v3 + 1] = GND[v3 + 1] * (1 - a) + g * a; VC[v3 + 2] = GND[v3 + 2] * (1 - a) + b * a;
+    }
+    const kzw = zs / s, ci = T.contour, cxs = T.contourIdx, segN = [], segI = [];
+    for (let j = 0; j < NY; j++) {
+      const y0 = j * dy, y1 = y0 + dy;
+      for (let i = 0; i < NX; i++) {
+        const v = j * NX1 + i, x0 = i * dx, x1 = x0 + dx;
+        const h00 = H[v], h10 = H[v + 1], h01 = H[v + NX1], h11 = H[v + NX1 + 1];
+        const gx = ((h10 + h11) - (h00 + h01)) * 0.5 * kzw / dx, gy = ((h01 + h11) - (h00 + h10)) * 0.5 * kzw / dy;
+        const sh = 0.6 + 0.55 * clamp((0.7 * gx - 0.2 * gy + 0.68) / Math.sqrt(gx * gx + gy * gy + 1), 0, 1);
+        const a3 = v * 3, b3 = (v + 1) * 3, c3 = (v + NX1 + 1) * 3, d3 = (v + NX1) * 3;
+        const fs = 'rgb(' + (clamp((VC[a3] + VC[b3] + VC[c3] + VC[d3]) * 0.25 * sh, 0, 255) | 0) + ',' +
+          (clamp((VC[a3 + 1] + VC[b3 + 1] + VC[c3 + 1] + VC[d3 + 1]) * 0.25 * sh, 0, 255) | 0) + ',' +
+          (clamp((VC[a3 + 2] + VC[b3 + 2] + VC[c3 + 2] + VC[d3 + 2]) * 0.25 * sh, 0, 255) | 0) + ')';
+        ctx.beginPath();
+        ctx.moveTo(ox + (x0 - y0) * sxk, oy + (x0 + y0) * syk - h00 * zs);
+        ctx.lineTo(ox + (x1 - y0) * sxk, oy + (x1 + y0) * syk - h10 * zs);
+        ctx.lineTo(ox + (x1 - y1) * sxk, oy + (x1 + y1) * syk - h11 * zs);
+        ctx.lineTo(ox + (x0 - y1) * sxk, oy + (x0 + y1) * syk - h01 * zs);
+        ctx.closePath();
+        ctx.fillStyle = fs; ctx.fill(); ctx.strokeStyle = fs; ctx.lineWidth = 0.7; ctx.stroke();
+        const mx = Math.max(h00, h10, h01, h11);
+        if (mx > CELL) {
+          const mn = Math.min(h00, h10, h01, h11), k0 = Math.max(1, Math.floor(mn / CELL) + 1);
+          cx0 = x0; cy0 = y0; cx1 = x1; cy1 = y1; ch00 = h00; ch10 = h10; ch11 = h11; ch01 = h01;
+          segN.length = 0; segI.length = 0;
+          for (let kk = k0; kk * CELL <= mx; kk++) {
+            cL = kk * CELL;
+            const bits = (h00 > cL ? 1 : 0) | (h10 > cL ? 2 : 0) | (h11 > cL ? 4 : 0) | (h01 > cL ? 8 : 0), cs = CASES[bits];
+            if (cs.length) {
+              const arr = (kk % 4 === 0) ? segI : segN;
+              segEkle(arr, cs[0], cs[1]);
+              if (cs.length > 2) segEkle(arr, cs[2], cs[3]);
+            }
+          }
+          segCiz(segN, ci, 0.8); segCiz(segI, cxs, 1.6);
+        }
+      }
+    }
+    for (let j = 0; j < NY; j++) { // sağ yan yüz
+      const ya = j * dy, yb = ya + dy, va = j * NX1 + NX, vb = (j + 1) * NX1 + NX, q3 = va * 3;
+      ctx.beginPath();
+      ctx.moveTo(ox + (W - ya) * sxk, oy + (W + ya) * syk - H[va] * zs); ctx.lineTo(ox + (W - yb) * sxk, oy + (W + yb) * syk - H[vb] * zs);
+      ctx.lineTo(ox + (W - yb) * sxk, oy + (W + yb) * syk); ctx.lineTo(ox + (W - ya) * sxk, oy + (W + ya) * syk); ctx.closePath();
+      const sf = 'rgb(' + ((VC[q3] * 0.54) | 0) + ',' + ((VC[q3 + 1] * 0.54) | 0) + ',' + ((VC[q3 + 2] * 0.54) | 0) + ')';
+      ctx.fillStyle = sf; ctx.fill(); ctx.strokeStyle = sf; ctx.lineWidth = 0.7; ctx.stroke();
+    }
+    for (let i = 0; i < NX; i++) { // ön yan yüz
+      const xa = i * dx, xb = xa + dx, wa = NY * NX1 + i, wb = wa + 1, u3 = wa * 3;
+      ctx.beginPath();
+      ctx.moveTo(ox + (xa - DD) * sxk, oy + (xa + DD) * syk - H[wa] * zs); ctx.lineTo(ox + (xb - DD) * sxk, oy + (xb + DD) * syk - H[wb] * zs);
+      ctx.lineTo(ox + (xb - DD) * sxk, oy + (xb + DD) * syk); ctx.lineTo(ox + (xa - DD) * sxk, oy + (xa + DD) * syk); ctx.closePath();
+      const sg = 'rgb(' + ((VC[u3] * 0.6) | 0) + ',' + ((VC[u3 + 1] * 0.6) | 0) + ',' + ((VC[u3 + 2] * 0.6) | 0) + ')';
+      ctx.fillStyle = sg; ctx.fill(); ctx.strokeStyle = sg; ctx.lineWidth = 0.7; ctx.stroke();
+    }
+    /* etiketler: önden arkaya yerleştirilir, çakışanlar yukarı kaydırılır */
+    const compact = L.compact, labs = [];
+    ctx.textAlign = 'center';
+    for (let k = 0; k < n; k++) {
+      const t = topics[k], ia = Math.round(t.px / dx), ja = Math.round(t.py / dy), ph = H[ja * NX1 + ia];
+      const ax = ox + (t.px - t.py) * sxk, ay = oy + (t.px + t.py) * syk - ph * zs, m = ms(t.n, t.c);
+      const mtxt = m === null ? '–' : (t.n < 10 ? '~' : '') + '%' + pct(m);
+      const l2 = t.n > 0 ? mtxt + ' · ' + t.n + ' soru' : 'dokunulmadı';
+      const full = !compact || k === M.sel, l1 = full ? t.ad : mtxt;
+      ctx.font = '700 11.5px ' + T.font; const w1 = ctx.measureText(l1).width; let w2 = 0;
+      if (full) { ctx.font = '500 10.5px ' + T.font; w2 = ctx.measureText(l2).width; }
+      const pw = Math.max(w1, w2) + 16, phh = full ? 36 : 22;
+      labs.push({ i: k, ax, ay, w: pw, h: phh, l1, l2: full ? l2 : '', x: clamp(ax - pw / 2, 4, Wc - pw - 4), y: ay - 14 - phh });
+    }
+    labs.sort((p, q) => q.ay - p.ay);
+    const yer = [];
+    for (const lb of labs) {
+      for (let gd = 0; gd < 40; gd++) {
+        let hit = null;
+        for (const pp of yer) if (lb.x < pp.x + pp.w + 4 && lb.x + lb.w + 4 > pp.x && lb.y < pp.y + pp.h + 4 && lb.y + lb.h + 4 > pp.y) { hit = pp; break; }
+        if (!hit) break;
+        lb.y = hit.y - lb.h - 4;
+      }
+      if (lb.y < 4) lb.y = 4;
+      yer.push(lb);
+    }
+    hits.length = 0;
+    const sirali = labs.slice().sort((p, q) => (p.i === M.sel ? 1 : 0) - (q.i === M.sel ? 1 : 0));
+    for (const l of sirali) {
+      const lx2 = clamp(l.ax, l.x + 8, l.x + l.w - 8);
+      ctx.beginPath(); ctx.moveTo(lx2, l.y + l.h); ctx.lineTo(l.ax, l.ay - 3); ctx.strokeStyle = T.muted; ctx.lineWidth = 1; ctx.stroke();
+      ctx.beginPath(); ctx.arc(l.ax, l.ay, 3.2, 0, 6.2832); ctx.fillStyle = T.ink; ctx.fill(); ctx.strokeStyle = T.card; ctx.lineWidth = 1.5; ctx.stroke();
+      yuvarla(l.x, l.y, l.w, l.h, 7); ctx.globalAlpha = 0.96; ctx.fillStyle = T.card; ctx.fill(); ctx.globalAlpha = 1;
+      ctx.strokeStyle = l.i === M.sel ? T.accent : T.line; ctx.lineWidth = l.i === M.sel ? 2.2 : 1; ctx.stroke();
+      ctx.fillStyle = T.ink; ctx.font = '700 11.5px ' + T.font;
+      ctx.fillText(l.l1, l.x + l.w / 2, l.y + 15);
+      if (l.l2) { ctx.fillStyle = T.muted; ctx.font = '500 10.5px ' + T.font; ctx.fillText(l.l2, l.x + l.w / 2, l.y + 29); }
+      hits.push({ x: l.x, y: l.y, w: l.w, h: l.h, i: l.i });
+    }
+    ctx.save();
+    ctx.font = '700 11px ' + T.font; ctx.fillStyle = T.muted; ctx.textAlign = 'center';
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '1.5px';
+    ctx.fillText(LGS.dersBul(M.ders).ad.toLocaleUpperCase('tr'), ox + (W / 2 - (DD + 4) + 0) * sxk - 0, oy + (W / 2 + DD + 4) * syk + 18);
+    ctx.restore();
+    for (let k = floaters.length - 1; k >= 0; k--) {
+      const f = floaters[k], age = (now - f.born) / 1100;
+      if (age >= 1 || reduce) { floaters.splice(k, 1); continue; }
+      const t = f.t, ia = Math.round(t.px / dx), ja = Math.round(t.py / dy);
+      const fx = ox + (t.px - t.py) * sxk, fy = oy + (t.px + t.py) * syk - H[ja * NX1 + ia] * zs - 22 - age * 32;
+      ctx.globalAlpha = 1 - age; ctx.font = '800 14px ' + T.font; ctx.textAlign = 'center';
+      ctx.lineWidth = 4; ctx.strokeStyle = T.card; ctx.strokeText(f.text, fx, fy);
+      ctx.fillStyle = T.fl; ctx.fillText(f.text, fx, fy); ctx.globalAlpha = 1;
+    }
+  }
+
+  /* ---------- Arayüz ---------- */
+  const chipBtn = {};
+  const chips = h('div', { class: 'mz-chips', role: 'group', 'aria-label': 'Ders seçimi' }, D.map(d => {
+    const b = h('button', { type: 'button', class: 'mz-chip', 'aria-pressed': d.id === M.ders ? 'true' : 'false',
+      onClick: () => { M.ders = d.id; M.sel = 0; dersDegisti(); } }, d.ad, h('small', { text: String(dersToplami(zm, d.id)) }));
+    chipBtn[d.id] = b; return b;
+  }));
+  const lejant = h('div', { class: 'mz-lej' }, h('div', { class: 'cap', text: 'Hâkimiyet (doğru oranı)' }), h('div', { class: 'mz-bar' }),
+    h('div', { class: 'mz-tik' }, h('span', { style: 'left:0;transform:none', text: '%30' }), h('span', { style: 'left:28.6%', text: '%50' }),
+      h('span', { style: 'left:57.1%', text: '%70' }), h('span', { style: 'left:85.7%', text: '%90' })));
+  const ust = h('div', { class: 'mz-ust' }, chips, lejant);
+
+  const kaydirici = h('input', { type: 'range', id: 'mz-hafta', min: '0', max: String(son), step: '1', value: String(wi), 'aria-label': 'Hafta seçimi',
+    onInput: e => { calis = false; oynatGuncelle(); wi = +e.target.value; M.hafta = wi === son ? null : wi; zamanDegisti(); } });
+  const oynat = h('button', { type: 'button', class: 'btn kucuk', onClick: () => {
+    if (son < 1) return;
+    if (!calis) { if (wi >= son) { wi = 0; kaydirici.value = '0'; M.hafta = 0; hedefler(); liste(); yaziGuncelle(); } calis = true; birikim = 0; }
+    else calis = false;
+    oynatGuncelle(); istek();
+  } });
+  const bugunBtn = h('button', { type: 'button', class: 'btn kucuk', text: 'Bugün', onClick: () => { calis = false; oynatGuncelle(); wi = son; M.hafta = null; kaydirici.value = String(son); zamanDegisti(); } });
+  const haftaYazi = h('div', { class: 'mz-hafta', 'aria-live': 'polite' });
+  function pngIndir() {
+    const ders = LGS.dersBul(M.ders), hf = zm.haftalar[wi];
+    let tn = 0, tc = 0; for (const t of topics) { tn += t.n; tc += t.c; }
+    const ustH = 66 * dpr, altH = 34 * dpr, pad = 24 * dpr;
+    const o = document.createElement('canvas'); o.width = cv.width; o.height = cv.height + ustH + altH;
+    const c = o.getContext('2d');
+    c.fillStyle = T.card; c.fillRect(0, 0, o.width, o.height);
+    c.textAlign = 'left';
+    c.fillStyle = T.ink; c.font = '800 ' + (22 * dpr) + 'px ' + T.font; c.fillText(ders.ad + ' · konu arazisi', pad, 36 * dpr);
+    c.fillStyle = T.muted; c.font = '500 ' + (13 * dpr) + 'px ' + T.font;
+    c.fillText('Hafta ' + (wi + 1) + '/' + (son + 1) + ' (' + tarihKisa(hf) + ' – ' + tarihKisa(LGS.gunEkle(hf, 6)) + ') · ' + tn + ' soru' + (tn ? ' · hâkimiyet %' + pct(tc / tn) : ''), pad, 56 * dpr);
+    c.drawImage(cv, 0, ustH);
+    c.fillStyle = T.muted; c.font = '500 ' + (11.5 * dpr) + 'px ' + T.font;
+    c.fillText('Yükseklik: çözülen soru · Renk: doğru oranı' + (opt.kod ? ' · ' + opt.kod : '') + ' · ' + LGS.tarihTR(LGS.bugun()), pad, o.height - 12 * dpr);
+    o.toBlob(b => {
+      if (!b) return UI.toast('Görüntü oluşturulamadı');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(b); a.download = 'lgs-manzara-' + ders.id + '-' + LGS.bugun() + '.png';
+      document.body.appendChild(a); a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    }, 'image/png');
+  }
+  const pngBtn = h('button', { type: 'button', class: 'btn kucuk', text: 'PNG indir', onClick: pngIndir });
+  function oynatGuncelle() { oynat.textContent = calis ? '❚❚ Durdur' : '▶ Oynat'; }
+  const zaman = h('div', { class: 'mz-zaman' }, oynat, kaydirici, bugunBtn, pngBtn, haftaYazi);
+  if (son < 1) { kaydirici.disabled = true; oynat.disabled = true; bugunBtn.disabled = true; }
+
+  const sHak = Panel.stat('Toplam hâkimiyet', '–', '\u00a0'), sSoru = Panel.stat('Çözülen soru', '0', '\u00a0'), sKonu = Panel.stat('İşlenen konu', '0/0', '\u00a0');
+  const stats = h('div', { class: 'stats', style: 'margin:14px 0 0' }, sHak, sSoru, sKonu);
+  const detay = h('p', { class: 'mz-detay', 'aria-live': 'polite' });
+  const bosKutu = oturumlar.length ? null : h('div', { class: 'mz-bos' }, h('strong', { text: 'Arazi henüz düz. ' }),
+    'İlk çalışmanı girince ilgili konunun tepesi yükselmeye başlar.', ' ',
+    opt.gir ? h('button', { type: 'button', class: 'btn birincil kucuk', text: 'Çalışma gir', onClick: opt.gir }) : null);
+  const ana = Panel.kart('Konu arazisi', bosKutu, ust, kutu,
+    h('small', { class: 'hint', id: 'mz-olcek' }), zaman, stats, detay);
+  const olcekYazi = ana.querySelector('#mz-olcek');
+
+  /* Konu ısı haritası: hücre = o haftanın doğru oranı; son sütun = bugüne kadarki birikimli doğru/yanlış/boş oranı */
+  const ISI_HAFTA = 12, haftalikOn = new Map();
+  function haftalikStat(i) {
+    if (haftalikOn.has(i)) return haftalikOn.get(i);
+    const bas = zm.haftalar[i], bit = LGS.gunEkle(bas, 6), m = new Map();
+    const alt = zm.ds.filter(o => o.tarih >= bas && (i === son || o.tarih <= bit));
+    for (const k of LGS.konuIstatistik(alt)) m.set(k.ders + '|' + k.konu, k);
+    haftalikOn.set(i, m); return m;
+  }
+  const fgFor = m => (m < 0.4 || m >= 0.95 ? '#ffffff' : '#0b1f3a');
+  const isiEl = h('div');
+  function isiKur() {
+    const ilk = Math.max(0, son - ISI_HAFTA + 1), idx = [];
+    for (let i = ilk; i <= son; i++) idx.push(i);
+    const bas = h('tr', null, h('th', { scope: 'col', class: 'k', text: 'Konu' }),
+      idx.map(i => h('th', { scope: 'col', title: tarihKisa(zm.haftalar[i]) + ' – ' + tarihKisa(LGS.gunEkle(zm.haftalar[i], 6)) + ' haftası', text: tarihKisa(zm.haftalar[i]) })),
+      h('th', { scope: 'col', text: 'Toplam' }));
+    const sonSt = zm.stat[son];
+    const govde = topics.map((t, ti) => {
+      const key = M.ders + '|' + t.ad;
+      const hucre = idx.map(i => {
+        const k = haftalikStat(i).get(key), aralik = tarihKisa(zm.haftalar[i]) + '–' + tarihKisa(LGS.gunEkle(zm.haftalar[i], 6));
+        if (!k || k.soru <= 0) return h('td', { class: 'bos', 'aria-label': t.ad + ', ' + aralik + ': soru çözülmedi', text: '–' });
+        const m = k.d / k.soru, c = pal(m), az = k.soru < 5;
+        const tip = t.ad + ', ' + aralik + ': ' + k.soru + ' soru, ' + k.d + ' doğru (%' + pct(m) + '), ' + k.y + ' yanlış, ' + k.b + ' boş' + (az ? ' · 5 sorudan az, oran güvenilir değil' : '');
+        return h('td', { title: tip, 'aria-label': tip,
+          style: az ? 'background-color:' + rgb(lerp3(c, [255, 255, 255], 0.6)) + ';color:#0b1f3a;background-image:repeating-linear-gradient(135deg,rgba(11,31,58,.14) 0 3px,transparent 3px 7px)'
+            : 'background-color:' + rgb(c) + ';color:' + fgFor(m) },
+          '%' + pct(m), h('small', { text: k.soru + ' soru' }));
+      });
+      const k = sonSt.get(key);
+      let top;
+      if (!k || k.soru <= 0) top = h('td', { class: 'bos top', text: '–' });
+      else {
+        const m = k.d / k.soru, tip = t.ad + ' toplam: ' + k.soru + ' soru, %' + pct(m) + ' doğru, %' + pct(k.y / k.soru) + ' yanlış, %' + pct(k.b / k.soru) + ' boş';
+        top = h('td', { class: 'top', title: tip, 'aria-label': tip, style: 'background-color:' + rgb(pal(m)) + ';color:' + fgFor(m) },
+          '%' + pct(m) + ' doğru', h('small', { text: 'Y %' + pct(k.y / k.soru) + ' · B %' + pct(k.b / k.soru) + ' · ' + k.soru }));
+      }
+      return h('tr', null, h('th', { scope: 'row', class: 'k' }, h('button', { type: 'button', class: 'konub', text: t.ad,
+        onClick: () => { M.sel = ti; liste(); yaziGuncelle(); istek(); } })), hucre, top);
+    });
+    isiEl.replaceChildren(
+      h('div', { class: 'mz-isikap' }, h('table', { class: 'mz-isi' }, h('caption', { class: 'gizli', style: 'position:absolute;left:-9999px', text: LGS.dersBul(M.ders).ad + ' konu ısı haritası' }), h('thead', null, bas), h('tbody', null, govde))),
+      h('small', { class: 'hint', text: 'Her hücre o haftanın doğru oranını (%) gösterir, altındaki sayı o haftaki soru sayısıdır. Taralı hücre 5 sorudan az olduğu için güvenilir değildir. Toplam sütunu bugüne kadarki doğru, yanlış (Y) ve boş (B) oranlarıdır. Son ' + ISI_HAFTA + ' hafta gösterilir.' }));
+  }
+  const isiKart = Panel.kart('Konu ısı haritası', isiEl);
+
+  const listeEl = h('ul', { class: 'mz-liste' });
+  const listeKart = Panel.kart('Konular', listeEl);
+  let satirlar = [];
+  function listeKur() {
+    satirlar = topics.map((t, i) => {
+      const nokta = h('span', { class: 'nokta' }), sy = h('span', { class: 'sy' }), ci = h('i'), ad = h('span', { class: 'ad', text: t.ad });
+      const b = h('button', { type: 'button', class: 'mz-satir', onClick: () => { M.sel = i; liste(); yaziGuncelle(); istek(); } }, nokta, ad, sy, h('span', { class: 'cb' }, ci));
+      listeEl.appendChild(h('li', null, b));
+      return { b, nokta, sy, ci };
+    });
+  }
+  function liste() {
+    topics.forEach((t, i) => {
+      const r = satirlar[i], m = ms(t.n, t.c), col = m === null ? rgb(T.lot) : rgb(pal(m));
+      r.nokta.style.background = col; r.ci.style.background = col; r.ci.style.width = Math.min(100, t.n / C * 100) + '%';
+      r.sy.textContent = t.n > 0 ? t.n + ' soru · ' + (t.n < 10 ? '~' : '') + '%' + pct(m) : 'dokunulmadı';
+      r.b.setAttribute('aria-current', i === M.sel ? 'true' : 'false');
+    });
+  }
+  function yaziGuncelle() {
+    const hf = zm.haftalar[wi], bit = LGS.gunEkle(hf, 6);
+    haftaYazi.replaceChildren(h('b', { text: 'Hafta ' + (wi + 1) + '/' + (son + 1) }),
+      ' · ' + tarihKisa(hf) + ' – ' + tarihKisa(bit) + (wi === son ? ' · bugüne kadar' : ' · bu haftanın sonundaki durum'));
+    let tn = 0, tc = 0, isl = 0;
+    for (const t of topics) { tn += t.n; tc += t.c; if (t.n > 0) isl++; }
+    const hak = tn > 0 ? tc / tn : null;
+    sHak.querySelector('.stat-v').textContent = hak === null ? '–' : '%' + pct(hak);
+    sHak.querySelector('.stat-n').textContent = hak === null ? 'veri yok' : seviye(hak);
+    sSoru.querySelector('.stat-v').textContent = String(tn);
+    sSoru.querySelector('.stat-n').textContent = LGS.dersBul(M.ders).ad;
+    sKonu.querySelector('.stat-v').textContent = isl + '/' + topics.length;
+    sKonu.querySelector('.stat-n').textContent = 'konu';
+    const t = topics[M.sel], m = ms(t.n, t.c);
+    detay.textContent = t.n > 0
+      ? t.ad + ': ' + t.n + ' soru (' + t.c + ' doğru, ' + t.yy + ' yanlış, ' + t.bb + ' boş) · ' + (t.n < 10 ? 'tahmini ' : '') + 'hâkimiyet %' + pct(m) + ' · son çalışma ' + tarihKisa(t.son) +
+        (t.n < 10 ? ' · 10 sorudan azda oran 50\'ye doğru yumuşatılır' : '')
+      : t.ad + ': henüz soru çözülmedi.';
+    olcekYazi.textContent = 'Yükseklik doğrusal: bu dersin en yüksek tepesi ' + C + ' soruluk ölçeğe göre çizilir. Etikete veya listeye tıklayınca konu seçilir.';
+    cv.setAttribute('aria-label', LGS.dersBul(M.ders).ad + ' arazisi: ' + topics.length + ' konunun ' + isl + ' tanesi işlendi, toplam ' + tn + ' soru.');
+  }
+  function zamanDegisti() { hedefler(); liste(); yaziGuncelle(); istek(); }
+  function dersDegisti() {
+    Object.entries(chipBtn).forEach(([id, b]) => b.setAttribute('aria-pressed', id === M.ders ? 'true' : 'false'));
+    dersKur(false); listeEl.replaceChildren(); listeKur(); liste(); isiKur(); yaziGuncelle(); istek();
+  }
+
+  /* ---------- Döngü ---------- */
+  let raf = 0, onceki = 0, olu = false, bagsiz = 0;
+  function istek() { if (!raf && !olu) { onceki = performance.now(); raf = requestAnimationFrame(tick); } }
+  function temizle() { olu = true; if (ro) ro.disconnect(); if (mq && mq.removeEventListener) mq.removeEventListener('change', temaDegisti); }
+  function tick(t) {
+    raf = 0;
+    if (!cv.isConnected) { if (++bagsiz > 30) temizle(); else raf = requestAnimationFrame(tick); return; }
+    bagsiz = 0;
+    if (!Wc) { boyut(); if (!Wc) { raf = requestAnimationFrame(tick); return; } }
+    const dt = Math.min(0.05, Math.max(0.001, (t - onceki) / 1000)); onceki = t;
+    if (calis) {
+      birikim += dt;
+      if (birikim >= 0.75) {
+        birikim = 0;
+        if (wi < son) { wi++; kaydirici.value = String(wi); M.hafta = wi === son ? null : wi; hedefler(); liste(); yaziGuncelle(); }
+        if (wi >= son) { calis = false; oynatGuncelle(); }
+      }
+    }
+    const L = duzen(), hareket = adim(dt, L);
+    ciz(t, L);
+    if (hareket || floaters.length || calis) istek();
+  }
+  function temaDegisti() { temaOku(); istek(); }
+  const mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  if (mq && mq.addEventListener) mq.addEventListener('change', temaDegisti);
+  const ro = window.ResizeObserver ? new ResizeObserver(() => { boyut(); istek(); }) : null;
+  if (ro) ro.observe(kutu);
+  function secimIcin(e) {
+    const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+    for (let k = hits.length - 1; k >= 0; k--) { const q = hits[k]; if (x >= q.x && x <= q.x + q.w && y >= q.y && y <= q.y + q.h) return q.i; }
+    return -1;
+  }
+  cv.addEventListener('click', e => { const i = secimIcin(e); if (i >= 0) { M.sel = i; liste(); yaziGuncelle(); istek(); } });
+  cv.addEventListener('pointermove', e => { cv.style.cursor = secimIcin(e) >= 0 ? 'pointer' : 'default'; });
+
+  temaOku();
+  dersKur(true);
+  listeKur(); liste(); isiKur(); oynatGuncelle(); yaziGuncelle();
+  if (anim) UI.save(KEY, { g: yeniKayit });
+  boyut(); istek();
+  return h('div', null, ana, isiKart, listeKart);
+}
+
+return { goster };
+})();
+
+</script>
+<script>
 /* Öğretmen (koç) uygulaması */
 (function () {
 'use strict';
@@ -1411,6 +2024,7 @@ function ogrenciGorunumu() {
   const panel = h('div');
   Panel.ozet(panel, oz, o.hedef);
   kok.append(panel);
+  kok.append(Manzara.goster(o.oturumlar, { animasyon: false, kod }));
 
   /* Yapay zeka */
   const paket = LGS.aiPaket(kod, oz, o.hedef);
