@@ -136,6 +136,35 @@ tr.detay td{background:var(--soft);padding:14px}
 @media (prefers-reduced-motion:reduce){#toast,.btn,nav.sekmeler button{transition:none}}
 @media print{nav.sekmeler,.btn,.toolbar{display:none}body{background:#fff;color:#000}header.top{background:none;color:#000;box-shadow:none}header.top::after{display:none}.card{break-inside:avoid;box-shadow:none}}
 
+.vr-pg{--vi:#10243f;--vm:#5b6b80;--vl:#dbe3ee;--vs:#eef3f9;--vn:#0f2a4d;--vo:#e8803a;width:210mm;min-height:297mm;margin:12px auto;background:#fff;color:var(--vi);padding:11mm 12mm;box-sizing:border-box;display:flex;flex-direction:column;gap:12px;font-size:13.5px;line-height:1.45;font-variant-numeric:tabular-nums;box-shadow:0 2px 12px rgba(0,0,0,.18);border-radius:4px}
+.vr-pg *{box-sizing:border-box}.vr-pg>footer{margin-top:auto;display:flex;justify-content:space-between;color:var(--vm);font-size:11px;border-top:1px solid var(--vl);padding-top:6px}
+.vr-top{background:linear-gradient(135deg,#0f2a4d,#1b4a86);color:#fff;border-radius:12px;padding:14px 18px;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;position:relative;overflow:hidden}
+.vr-top::after{content:"";position:absolute;right:-30px;top:-52px;width:150px;height:150px;border-radius:50%;background:var(--vo)}.vr-top>*{position:relative;z-index:1}
+.vr-top h1{margin:0;font-size:22px;line-height:1.15;color:#fff}.vr-top small{color:#c5d5ea;display:block;margin-top:3px;font-size:12px}
+.vr-top .vr-r{text-align:right;font-size:12px;color:#dbe7f7;padding-right:70px}.vr-top .vr-r b{color:#fff;font-size:15px}
+.vr-pg h2{margin:0 0 6px;font-size:15px;color:var(--vi)}.vr-pg h2 small{font-weight:500;color:var(--vm);font-size:12px;margin-left:6px}
+.vr-sub{color:var(--vm);font-size:12px;margin:0 0 6px}
+.vr-kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.vr-kpi div{background:var(--vs);border-radius:10px;padding:8px 10px}.vr-kpi b{font-size:22px;display:block;line-height:1.1}.vr-kpi span{font-size:11.5px;color:var(--vm)}
+.vr-durum{display:flex;gap:10px;align-items:center;border:1.5px solid;border-radius:10px;padding:8px 12px}.vr-chip{color:#fff;font-weight:700;border-radius:999px;padding:3px 12px;white-space:nowrap}
+.vr-pg svg{display:block;width:100%;height:auto}.vr-pg table{border-collapse:collapse;width:100%;font-size:12.5px;background:none}
+.vr-pg th{font-weight:600;color:var(--vm);text-align:left;font-size:11.5px;padding:3px 6px;border-bottom:1.5px solid var(--vl);background:none}.vr-pg td{padding:5px 6px;border-bottom:1px solid var(--vl);vertical-align:middle;color:var(--vi)}
+.vr-stk{display:flex;height:12px;border-radius:6px;overflow:hidden;min-width:110px;background:var(--vs)}.vr-hz{height:8px;border-radius:4px;background:var(--vo);display:block}
+.vr-two{display:grid;grid-template-columns:1fr 1fr;gap:14px}.vr-three{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.vr-nb{display:grid;grid-template-columns:1fr 64px 34px;gap:6px;align-items:center;font-size:12px;margin:3px 0}.vr-nb i{display:block;height:8px;border-radius:4px;background:#1f5fa8}
+.vr-col{border:1px solid var(--vl);border-radius:10px;padding:8px 10px}.vr-col h3{margin:0 0 5px;font-size:13px;color:var(--vi)}.vr-col p{margin:3px 0;font-size:12px;display:flex;justify-content:space-between;gap:6px}.vr-col p span{color:var(--vm);white-space:nowrap}
+.vr-yk{border-top:4px solid #1f5fa8}.vr-gu{border-top:4px solid #3baf9b}.vr-od{border-top:4px solid #e8803a}
+.vr-leg{height:9px;border-radius:5px;background:linear-gradient(90deg,#A63220 14%,#E8803A 36%,#EBBE3D 57%,#3BAF9B 79%,#1F5FA8 93%)}.vr-tk{display:flex;justify-content:space-between;font-size:10.5px;color:var(--vm)}
+.vr-heat th{white-space:nowrap;font-size:10.5px;text-align:center;padding:3px 2px;border:1.5px solid #fff}.vr-heat td{text-align:center;padding:2px;border:1.5px solid #fff;font-size:11.5px;font-weight:700;border-radius:4px}
+.vr-heat td:first-child,.vr-heat th:first-child{color:var(--vm);font-size:10.5px;font-weight:600;width:16px;text-align:right;padding-right:3px;background:none!important}
+.vr-heat td:nth-child(2),.vr-heat th:nth-child(2){text-align:left;padding-left:2px;white-space:nowrap;font-size:11px;font-weight:600;background:none!important}
+.vr-az{background-image:repeating-linear-gradient(135deg,rgba(11,31,58,.15) 0 3px,transparent 3px 7px)}
+.vr-note{background:var(--vs);border-radius:10px;padding:9px 12px;font-size:12.5px}.vr-edit{border:1.5px dashed #9db3cf;border-radius:10px;padding:9px 12px;min-height:70px;font-size:13px}
+.vr-pg ul{margin:4px 0 0;padding-left:18px}.vr-pg li{margin:2px 0}.vr-ph:empty::before{content:attr(data-ph);color:#9db3cf}
+.vr-dg{display:grid;grid-template-columns:36% 1fr;gap:10px;align-items:start}.vr-dh{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid var(--vn);margin:2px 0 4px;padding-bottom:3px}.vr-dh b{font-size:14.5px}.vr-dh span{font-size:12px;color:var(--vm)}
+.vr-wk{display:grid;grid-template-columns:110px 1fr 56px;gap:8px;align-items:center;margin:4px 0;font-size:12px}.vr-wk i{display:block;height:14px;border-radius:5px;background:#1f5fa8}
+.vr-bar{max-width:210mm;margin:0 auto 6px}
+@media (max-width:820px){.vr-pg{width:auto;min-height:0;margin:8px 0;padding:14px}.vr-kpi{grid-template-columns:1fr 1fr}.vr-two,.vr-three,.vr-dg{grid-template-columns:1fr}.vr-top .vr-r{text-align:left;padding-right:0}.vr-top::after{display:none}}
+@media print{@page{size:A4;margin:0}body.vr header.top,body.vr nav.sekmeler,.vr-no{display:none!important}body.vr .wrap{max-width:none;padding:0}.vr-pg{margin:0;box-shadow:none;border-radius:0;width:210mm;height:297mm;min-height:0;overflow:hidden;break-after:page}.vr-ph:empty::before{content:""}}
 </style>
 </head>
 <body>
@@ -1996,7 +2025,8 @@ function ogrenciGorunumu() {
   const etiket = h('input', { type: 'text', maxlength: 40, value: o.etiket, placeholder: 'Takma ad (yalnızca bu cihazda)' });
   kok.append(h('div', { class: 'toolbar' },
     h('button', { class: 'btn kucuk', type: 'button', text: '← Sınıf listesi', onClick: () => { gorunum = 'sinif'; ciz(); } }),
-    h('h2', { style: 'margin:0;font-size:20px', text: ad(kod) })),
+    h('h2', { style: 'margin:0;font-size:20px', text: ad(kod) }),
+    h('button', { class: 'btn kucuk birincil', type: 'button', text: 'Veli raporu', onClick: () => { gorunum = 'veli'; ciz(); } })),
     Panel.kart('Etiket', field('Bu cihazda gösterilecek ad', etiket, 'Etiket dışa aktarılmaz ve yapay zekaya gönderilen pakete girmez.'),
       h('div', null, h('button', { class: 'btn kucuk', type: 'button', text: 'Kaydet', onClick: () => { o.etiket = LGS.kisalt(etiket.value, 40); kaydet(); UI.toast('Etiket kaydedildi'); ciz(); } }))));
 
@@ -2231,11 +2261,218 @@ function girisEkrani() {
   } }, field('Öğretmen anahtarı', gir, 'Yalnızca bu tarayıcıda saklanır ve yedek dosyasına girmez. Ortak bilgisayarda "Anahtarı unut" ile temizle.'), hata, h('div', null, dugme)));
 }
 
+/* ---------- Veli raporu (yazdırılabilir, öğrenci kodu içermez) ---------- */
+const VR = { donem: '4', duzen: {} };
+const vrEsc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const VR_ST = [[.40, 166, 50, 32], [.55, 232, 128, 58], [.70, 235, 190, 61], [.85, 59, 175, 155], [.95, 31, 95, 168]];
+function vrPal(m) {
+  if (m <= VR_ST[0][0]) return VR_ST[0].slice(1);
+  for (let i = 1; i < VR_ST.length; i++) if (m <= VR_ST[i][0]) { const a = VR_ST[i - 1], b = VR_ST[i], t = (m - a[0]) / (b[0] - a[0]); return [1, 2, 3].map(k => Math.round(a[k] + (b[k] - a[k]) * t)); }
+  return VR_ST[4].slice(1);
+}
+const vrRgb = c => 'rgb(' + c.join(',') + ')';
+const vrFg = m => (m < .4 || m >= .95) ? '#fff' : '#0b1f3a';
+const VR_AY = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+const vrKisa = s => { const [, m, d] = s.split('-'); return Number(d) + ' ' + VR_AY[Number(m) - 1]; };
+const VR_NY = { bilgi: 'Konuyu bilmiyor / unutmuş', kavram: 'Yanlış öğrenme', islem: 'İşlem hatası', dikkat: 'Soruyu dikkatli okumama', sure: 'Acele / süre baskısı', tip: 'Yeni tip soru' };
+const VR_NB = { bilgi: 'Konuyu bilmediği için', emin: 'Emin olamadığı için', sure: 'Süre yetmedi', tip: 'Soru tipini tanımadı' };
+const VR_ONERI = {
+  dikkat: 'Soruyu bitirmeden önce “son bir kez okuyup kontrol etme” alışkanlığı en hızlı kazancı sağlayacaktır.',
+  bilgi: 'Eksik konuların kısa tekrarlarla pekiştirilmesi önerilir.',
+  kavram: 'Yanlış öğrenilen kuralların birlikte gözden geçirilmesi faydalı olacaktır.',
+  islem: 'Çözümde adımların yazılarak ilerlenmesi işlem hatalarını azaltacaktır.',
+  sure: 'Süre yönetimi için zamanlı kısa çalışmalar önerilir.',
+  tip: 'Farklı soru tiplerine daha çok maruz kalmak (yeni nesil, grafik vb.) yardımcı olacaktır.'
+};
+const VR_KISA = { tur: 'Türkçe', mat: 'Mat', fen: 'Fen', ink: 'İnk', din: 'Din', ing: 'İng' };
+const vrYuzde = (a, b) => b ? Math.round(100 * a / b) : 0;
+const vrSay = n => Number(n).toLocaleString('tr-TR');
+
+function vrHesap(o, donem) {
+  const L = LGS, ref = L.bugun(), hb = L.haftaBasi(ref);
+  const tum = L.sirala(o.oturumlar).filter(x => x.tur === 'konu'); /* denemeler rapora girmez */
+  const bas = donem === 'tum' ? '0000-00-00' : L.gunEkle(hb, -21);
+  const ds = tum.filter(x => x.tarih >= bas);
+  const r = { ref, hb, ds, tum, donem, T: { soru: 0, d: 0, y: 0, b: 0 }, ders: {}, ny: {}, nb: {}, nyTop: 0, nbTop: 0 };
+  L.DERSLER.forEach(d => { r.ders[d.id] = { ad: d.ad, soru: 0, d: 0, y: 0, b: 0, ny: {}, hiz: null }; });
+  for (const x of ds) for (const b of x.bolumler) {
+    const t = r.ders[b.ders]; if (!t) continue;
+    t.soru += b.soru; t.d += b.d; t.y += b.y; t.b += b.b;
+    r.T.soru += b.soru; r.T.d += b.d; r.T.y += b.y; r.T.b += b.b;
+  }
+  for (const x of ds) for (const h2 of x.hatalar) {
+    if (!h2.neden) continue;
+    if (h2.sonuc === 'y') { r.ny[h2.neden] = (r.ny[h2.neden] || 0) + 1; r.nyTop++; const t = r.ders[h2.ders]; if (t) t.ny[h2.neden] = (t.ny[h2.neden] || 0) + 1; }
+    else { r.nb[h2.neden] = (r.nb[h2.neden] || 0) + 1; r.nbTop++; }
+  }
+  L.dersHizi(ds).forEach(x => { if (r.ders[x.ders]) r.ders[x.ders].hiz = x.hiz; });
+  r.yeterli = ds.length >= 3 && r.T.soru >= 60;
+  r.ilk = ds.length ? ds[0].tarih : null;
+  r.gunler = new Set(ds.map(x => x.tarih)).size;
+  r.gunToplam = r.ilk ? L.farkGun(ref, r.ilk) + 1 : 0;
+  r.son = ds.length ? ds[ds.length - 1].tarih : null;
+  r.gunOnce = r.son ? L.farkGun(ref, r.son) : null;
+  const hw = L.haftalar(tum, ref, 2); r.bu = hw[1].konu; r.gec = hw[0].konu;
+  r.gunluk = L.gunluk(tum, ref, 14);
+  /* haftalık sütunlar */
+  let n = donem === 'tum' ? 8 : 4;
+  if (r.ilk) n = Math.max(2, Math.min(n, Math.round(L.farkGun(hb, L.haftaBasi(r.ilk)) / 7) + 1));
+  r.hw = L.haftalar(tum, ref, n);
+  r.w0 = r.hw[0].bas;
+  r.konu = {};
+  L.DERSLER.forEach(d => { r.konu[d.id] = new Map(L.KONULAR[d.id].map(k => [k, { soru: 0, d: 0, w: Array.from({ length: n }, () => ({ s: 0, d: 0 })) }])); });
+  for (const x of ds) {
+    const wi = Math.round(L.farkGun(L.haftaBasi(x.tarih), r.w0) / 7);
+    for (const b of x.bolumler) {
+      const m = r.konu[b.ders]; if (!m) continue;
+      if (!m.has(b.konu)) m.set(b.konu, { soru: 0, d: 0, w: Array.from({ length: n }, () => ({ s: 0, d: 0 })) });
+      const k = m.get(b.konu); k.soru += b.soru; k.d += b.d;
+      if (wi >= 0 && wi < n) { k.w[wi].s += b.soru; k.w[wi].d += b.d; }
+    }
+  }
+  /* trend (koçtaki kural: son 14 gün / önceki 21 gün) */
+  const tr = L.konuTrend(tum, ref).filter(t => t.son.soru >= 10);
+  const ad = t => (VR_KISA[t.ders] || t.ders) + ' · ' + t.konu;
+  const deger = t => (t.onceki && t.onceki.soru >= 10 ? '%' + Math.round(100 * t.onceki.basari) + ' → ' : '') + '%' + Math.round(100 * t.son.basari);
+  r.yk = tr.filter(t => t.fark != null && t.fark >= .05).sort((a, b) => b.fark - a.fark).slice(0, 4);
+  r.od = tr.filter(t => t.son.basari < .9 && !r.yk.includes(t)).sort((a, b) => a.son.basari - b.son.basari).slice(0, 4);
+  r.gu = tr.filter(t => t.son.soru >= 30 && t.son.basari >= .85 && !r.yk.includes(t) && !r.od.includes(t)).sort((a, b) => b.son.basari - a.son.basari).slice(0, 4);
+  r.ad = ad; r.deger = deger;
+  /* durum */
+  const p = vrYuzde(r.T.d, r.T.soru), nedenler = [];
+  let durum = 'yolunda';
+  if (r.gunOnce != null && r.gunOnce >= 5) nedenler.push('son kayıt ' + r.gunOnce + ' gün önce');
+  if (r.T.soru && p < 65) nedenler.push('doğru oranı %' + p);
+  if (r.gunOnce != null && r.gunOnce >= 10 || (r.T.soru && p < 50)) durum = 'destek'; else if (nedenler.length) durum = 'dikkat';
+  if (!r.yeterli) durum = 'az';
+  r.p = p; r.durum = durum; r.nedenler = nedenler;
+  return r;
+}
+
+function vrTaslak(r, kod) {
+  if (!r.yeterli) return '<p style="margin:0">Kayıt sayısı henüz az olduğu için bu dönem yorum yapılmamıştır. Çalışma kayıtları arttıkça rapor güncellenecektir.</p>';
+  const per = r.donem === 'tum' ? 'kayıtlı dönemde' : 'son dört haftada';
+  const ps = [];
+  ps.push('Öğrencimiz ' + per + ' ' + vrSay(r.T.soru) + ' soru çözdü; doğru oranı %' + r.p + '.');
+  const top = Object.entries(r.ny).sort((a, b) => b[1] - a[1])[0];
+  if (r.nyTop >= 5 && top) ps.push('Yanlışların %' + vrYuzde(top[1], r.nyTop) + '’i “' + VR_NY[top[0]].toLowerCase() + '” kaynaklı. ' + (VR_ONERI[top[0]] || ''));
+  if (r.yk.length) ps.push(r.yk.slice(0, 2).map(t => r.ad(t)).join(' ve ') + ' konularındaki yükseliş değerlidir.');
+  if (r.od.length) ps.push(r.od.slice(0, 3).map(t => r.ad(t)).join(', ') + ' konularında kısa bir tekrar önerilir.');
+  return ps.map(s => '<p style="margin:0 0 6px">' + vrEsc(s) + '</p>').join('');
+}
+
+function vrArazi(rows) {
+  const n = rows.length, C = 4, R = Math.ceil(n / C), TW = 40, TH = 20, f = .92, CX = R * TW, mx = Math.max(1, ...rows.map(t => t.soru)), sc = 46 / mx, Y0 = 60;
+  const H = Y0 + (C + R - 2) * TH + TH + 6, W = (C + R) * TW, P = a => a.map(p => p.join(',')).join(' ');
+  const o = rows.map((t, k) => ({ i: k % C, j: Math.floor(k / C), t, k })).sort((a, b) => (a.i + a.j) - (b.i + b.j));
+  let s = '';
+  for (const e of o) {
+    const x = (e.i - e.j) * TW + CX, y = Y0 + (e.i + e.j) * TH, ok = e.t.soru >= 10, h2 = ok ? Math.max(6, e.t.soru * sc) : 2;
+    const m = ok ? e.t.d / e.t.soru : null, c = m == null ? [205, 212, 222] : vrPal(m), w = TW * f, d = TH * f, sh = q => vrRgb(c.map(v => Math.round(v * q)));
+    s += '<polygon points="' + P([[x - w, y - h2], [x, y - h2 + d], [x, y + d], [x - w, y]]) + '" fill="' + sh(.78) + '"/><polygon points="' + P([[x + w, y - h2], [x, y - h2 + d], [x, y + d], [x + w, y]]) + '" fill="' + sh(.62) + '"/><polygon points="' + P([[x, y - h2 - d], [x + w, y - h2], [x, y - h2 + d], [x - w, y - h2]]) + '" fill="' + vrRgb(c) + '"/>' +
+      (ok ? '<text x="' + x + '" y="' + (y - h2 + 4) + '" font-size="10.5" font-weight="700" text-anchor="middle" fill="' + vrFg(m) + '">' + (e.k + 1) + '</text>' : '');
+  }
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Konu arazisi">' + s + '</svg>';
+}
+function vrIsi(rows, r) {
+  const cell = (v, n) => {
+    if (v == null) return '<td style="background:#f3f5f8;color:#9aa6b5;font-weight:500">–</td>';
+    const az = n < 10, c = vrPal(v);
+    return '<td class="' + (az ? 'vr-az' : '') + '" style="background:' + vrRgb(az ? c.map(q => Math.round(q + (255 - q) * .6)) : c) + ';color:' + (az ? '#0b1f3a' : vrFg(v)) + '">%' + Math.round(v * 100) + '</td>';
+  };
+  let s = '<table class="vr-heat"><thead><tr><th></th><th>Konu</th>' + r.hw.map(w => '<th>' + vrKisa(w.bas) + '</th>').join('') + '<th>Toplam</th></tr></thead><tbody>';
+  rows.forEach((t, k) => {
+    s += '<tr><td>' + (k + 1) + '</td><td>' + vrEsc(t.ad) + '</td>' + t.w.map(w => w.s ? cell(w.d / w.s, w.s) : cell(null)).join('') + (t.soru ? cell(t.d / t.soru, t.soru) : cell(null)) + '</tr>';
+  });
+  return s + '</tbody></table>';
+}
+function vrBlok(id, r) {
+  const L = LGS, dd = r.ders[id], rows = [...r.konu[id].entries()].map(([ad, v]) => ({ ad, ...v }));
+  return '<div><div class="vr-dh"><b>' + vrEsc(dd.ad) + '</b><span>' + vrSay(dd.soru) + ' soru' + (dd.soru ? ' · %' + vrYuzde(dd.d, dd.soru) + ' doğru' : '') + '</span></div><div class="vr-dg"><div>' + vrArazi(rows) + '</div><div>' + vrIsi(rows, r) + '</div></div></div>';
+}
+function vrGun(r) {
+  const v = r.gunluk, mx = Math.max(10, ...v.map(x => x.soru)) * 1.1, y = x => 118 - x / mx * 100;
+  let s = '';
+  v.forEach((x, i) => {
+    const px = 20 + i * 41, bu = x.gun >= r.hb;
+    s += x.soru ? '<rect x="' + px + '" y="' + y(x.soru) + '" width="30" height="' + (118 - y(x.soru)) + '" rx="4" fill="' + (bu ? '#1f5fa8' : '#8fb0d9') + '"/><text x="' + (px + 15) + '" y="' + (y(x.soru) - 4) + '" font-size="11" text-anchor="middle" fill="#10243f">' + x.soru + '</text>' : '<text x="' + (px + 15) + '" y="114" font-size="10" text-anchor="middle" fill="#8a97a8">–</text>';
+    s += '<text x="' + (px + 15) + '" y="134" font-size="10.5" text-anchor="middle" fill="#5b6b80">' + Number(x.gun.slice(8)) + '</text>';
+  });
+  return s + '<text x="20" y="12" font-size="11" fill="#5b6b80">Açık mavi: önceki hafta(lar)</text><text x="590" y="12" font-size="11" text-anchor="end" fill="#10243f">Koyu mavi: bu hafta</text>';
+}
+const vrNb = (obj, tot, adlar) => !tot ? '<p class="vr-sub">Neden kaydı girilmemiş.</p>' : Object.entries(obj).sort((a, b) => b[1] - a[1]).map(([k, v]) => '<div class="vr-nb"><span>' + vrEsc(adlar[k] || k) + '</span><span><i style="width:' + Math.min(64, vrYuzde(v, tot) * 1.05) + 'px"></i></span><b>%' + vrYuzde(v, tot) + '</b></div>').join('');
+
+function vrSayfalar(o, r, kod) {
+  const L = LGS, per = r.donem === 'tum' ? 'kayıtlı tüm dönem' : 'son 4 hafta';
+  const renk = { yolunda: '#3baf9b', dikkat: '#e8803a', destek: '#c8553d', az: '#8a97a8' }[r.durum], etiket = { yolunda: 'Yolunda', dikkat: 'Dikkat', destek: 'Destek gerekiyor', az: 'Veri az' }[r.durum];
+  const cumle = { yolunda: 'Son dönemde <b>' + vrSay(r.T.soru) + ' soru</b> çözdü ve doğru oranı <b>%' + r.p + '</b>. Çalışma düzeni yolunda; ayrıntılar sonraki sayfalarda.',
+    dikkat: 'Dikkat edilecek noktalar: ' + vrEsc(r.nedenler.join(', ')) + '. Küçük bir planlamayla kolayca toparlanabilir.',
+    destek: 'Şu an ek destek gerekiyor: ' + vrEsc(r.nedenler.join(', ')) + '. Birlikte bir çalışma planı oluşturmayı öneriyoruz.',
+    az: 'Kayıt sayısı henüz az olduğu için yorum yapılmamıştır.' }[r.durum];
+  const dersIds = L.DERSLER.map(d => d.id);
+  const dersSatir = dersIds.map(id => {
+    const d = r.ders[id]; if (!d.soru) return '';
+    const top = Object.entries(d.ny).sort((a, b) => b[1] - a[1])[0], nt = Object.values(d.ny).reduce((a, b) => a + b, 0);
+    return '<tr><td><b>' + vrEsc(d.ad) + '</b></td><td>' + vrSay(d.soru) + '</td><td><div class="vr-stk"><span style="width:' + vrYuzde(d.d, d.soru) + '%;background:#3baf9b"></span><span style="width:' + vrYuzde(d.y, d.soru) + '%;background:#c8553d"></span><span style="width:' + vrYuzde(d.b, d.soru) + '%;background:#b9c3d0"></span></div></td><td>%' + vrYuzde(d.d, d.soru) + ' / %' + vrYuzde(d.y, d.soru) + ' / %' + vrYuzde(d.b, d.soru) + '</td><td>' + (d.hiz ? '<div style="display:flex;gap:6px;align-items:center"><span style="width:26px">' + d.hiz.toFixed(1) + '</span><span style="width:60px"><i class="vr-hz" style="width:' + Math.min(100, d.hiz / 2 * 100) + '%"></i></span></div>' : '–') + '</td><td>' + (top && nt >= 5 ? vrEsc(VR_NY[top[0]]) + ' (%' + vrYuzde(top[1], nt) + ')' : '<span style="color:#8a97a8">veri az</span>') + '</td></tr>';
+  }).join('');
+  const col = (cls, bas, arr, bos) => '<div class="vr-col ' + cls + '"><h3>' + bas + '</h3>' + (arr.length ? arr.map(t => '<p>' + vrEsc(r.ad(t)) + '<span>' + vrEsc(r.deger(t)) + '</span></p>').join('') : '<p style="color:#5b6b80">' + bos + '</p>') + '</div>';
+  const wmx = Math.max(1, ...r.hw.map(w => w.konu));
+  const hafta = r.hw.map(w => '<div class="vr-wk"><span>' + vrKisa(w.bas) + ' – ' + vrKisa(L.gunEkle(w.bas, 6)) + '</span><span><i style="width:' + Math.max(2, 100 * w.konu / wmx) + '%;' + (w.guncel ? 'background:#8fb0d9' : '') + '"></i></span><b>' + vrSay(w.konu) + '</b></div>').join('');
+  const pay = '<div class="vr-stk" style="height:16px">' + dersIds.map(id => '<span style="width:' + (r.T.soru ? 100 * r.ders[id].soru / r.T.soru : 0) + '%;background:' + ({ tur: '#2f6db5', mat: '#f26a1b', fen: '#2e9d6e', ink: '#8a5cc4', din: '#c9a227', ing: '#d1477a' })[id] + '"></span>').join('') + '</div><div style="display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11.5px;margin-top:4px">' + dersIds.filter(id => r.ders[id].soru).map(id => '<span><i style="display:inline-block;width:9px;height:9px;border-radius:2px;background:' + ({ tur: '#2f6db5', mat: '#f26a1b', fen: '#2e9d6e', ink: '#8a5cc4', din: '#c9a227', ing: '#d1477a' })[id] + '"></i> ' + vrEsc(r.ders[id].ad) + ' %' + vrYuzde(r.ders[id].soru, r.T.soru) + '</span>').join('') + '</div>';
+  const hedef = o.hedef && o.hedef.haftalikSoru > 0 ? o.hedef.haftalikSoru : 0;
+  const odakAd = r.od.length ? r.od.slice(0, 3).map(t => r.ad(t)).join(', ') : (o.hedef && o.hedef.odak ? o.hedef.odak : '');
+  const destek = '<li>Düzenli uyku ve haftada en az bir dinlenme günü çok önemli.</li><li>Soru sayısını değil, yanlışların birlikte gözden geçirilmesini sorun.</li><li>Sabit bir çalışma saati ve kısa aralar; çalışma ortamını sakin tutun.</li><li>Başarıyı başkasıyla değil, öğrencinin kendi geçmişiyle kıyaslayın.</li>';
+  const plan = '<li>' + (hedef ? 'Haftalık soru hedefi: <b>' + vrSay(hedef) + '</b>' : 'Haftalık soru hedefi birlikte belirlenecek.') + '</li>' + (odakAd ? '<li>Odak konular: ' + vrEsc(odakAd) + '</li>' : '') + '<li>Çözüm sonrası “neden yanlış yaptım?” kaydının her soruda girilmesi.</li><li>Bir sonraki bilgilendirme tarihi öğretmen tarafından bildirilecektir.</li>';
+  const ed = (k, cls, ic, st) => '<div class="' + cls + '" data-ed="' + k + '" style="' + (st || '') + '">' + ic + '</div>';
+  const S = [];
+  S.push('<div class="vr-top"><div><h1>Veli Bilgilendirme Raporu</h1><small>Hasandağı Ortaokulu · Soru çözüm takibi</small></div><div class="vr-r"><b><span class="vr-ph" data-ed="ad" data-g="1" data-ph="Öğrenci adı">' + vrEsc(o.etiket) + '</span> · <span class="vr-ph" data-ed="sinif" data-g="1" data-ph="sınıf"></span></b><br>Dönem: ' + (r.ilk ? vrKisa(r.ilk) + ' – ' + vrKisa(r.ref) + ' ' + r.ref.slice(0, 4) : '–') + ' (' + per + ')<br>Hazırlayan: <span class="vr-ph" data-ed="ogrt" data-g="1" data-ph="Öğretmen">Ünal Öğretmen</span></div></div>' +
+    '<div class="vr-durum" style="border-color:' + renk + '"><span class="vr-chip" style="background:' + renk + '">' + etiket + '</span><div data-ed="durum">' + cumle + '</div></div>' +
+    '<div class="vr-kpi"><div><b>' + vrSay(r.T.soru) + '</b><span>Çözülen soru (' + per + ')</span></div><div><b>' + vrSay(r.bu) + '</b><span>Bu hafta</span></div><div><b>' + vrSay(r.gec) + '</b><span>Geçen hafta' + (hedef ? ' · hedef ' + vrSay(hedef) : '') + '</span></div><div><b>%' + r.p + '</b><span>Genel doğru oranı</span></div></div>' +
+    '<div><h2>Son 2 haftada çözülen soru<small>' + vrKisa(r.gunluk[0].gun) + ' – ' + vrKisa(r.gunluk[13].gun) + '</small></h2><svg viewBox="0 0 600 150" role="img" aria-label="Son 14 günde çözülen soru sayısı">' + vrGun(r) + '</svg><p class="vr-sub">Boş günler çalışma yapılmayan günlerdir.' + (hedef ? '' : ' Haftalık soru hedefi tanımlı olmadığı için hedef çizgisi gösterilmedi.') + '</p></div>' +
+    '<div><h2>Derslere göre sonuçlar<small>' + per + '</small></h2><table><thead><tr><th>Ders</th><th>Soru</th><th>Doğru · Yanlış · Boş</th><th>D / Y / B</th><th>Hız (soru/dk)</th><th>Yanlışların ana nedeni</th></tr></thead><tbody>' + dersSatir + '</tbody></table><p class="vr-sub">Yeşil: doğru · kırmızı: yanlış · gri: boş. Hız, bir soruya ayrılan ortalama süreyi gösterir; yüksek hız her zaman iyi değildir, doğrulukla birlikte okunmalıdır.</p></div>' +
+    '<div class="vr-two"><div><h2>Yanlışların nedenleri</h2>' + vrNb(r.ny, r.nyTop, VR_NY) + '<p class="vr-sub">Nedeni kayda girilen ' + r.nyTop + ' yanlış üzerinden (toplam ' + r.T.y + ' yanlış).</p></div><div><h2>Boş bırakma nedenleri</h2>' + vrNb(r.nb, r.nbTop, VR_NB) + '<p class="vr-sub">Nedeni kayda girilen ' + r.nbTop + ' boş üzerinden (toplam ' + r.T.b + ' boş).</p></div></div>');
+  S.push('<div><h2>Çalışma düzeni<small>haftalık toplam soru</small></h2>' + hafta + '<p class="vr-sub">Çalışılan gün sayısı: ' + r.gunler + ' / ' + r.gunToplam + '. Son hafta henüz tamamlanmadıysa düşük görünmesi normaldir (açık renkli çubuk).</p><p class="vr-sub" style="margin:8px 0 3px">Derslere göre soru dağılımı</p>' + pay + '</div>' +
+    (r.yeterli ? '<div><h2>Konu trendi<small>son 2 hafta, önceki haftalarla karşılaştırma (doğru oranı)</small></h2><div class="vr-three">' + col('vr-yk', 'Yükselen konular', r.yk, 'Bu dönemde belirgin yükseliş yok.') + col('vr-gu', 'Güçlü ve istikrarlı konular', r.gu, 'Henüz yeterli veri yok.') + col('vr-od', 'Odaklanılacak konular', r.od, 'Belirgin bir odak konusu yok.') + '</div><p class="vr-sub" style="margin-top:6px">Yalnızca en az 10 soru çözülen konular gösterilir. Önceki dönemde yeterli veri olmayan konularda yalnızca güncel oran verilir.</p></div>' : '<div class="vr-note">Kayıt sayısı henüz az olduğu için konu trendi gösterilmedi.</div>') +
+    '<div class="vr-note"><b>Konu arazisi ve ısı haritası nasıl okunur?</b> Sonraki sayfalarda her ders için bir “arazi” ve bir ısı haritası var. Arazide blok ne kadar yüksekse o konuda o kadar çok soru çözülmüştür; renk doğru oranını gösterir (kırmızı–turuncu daha çok çalışma gereken, mavi–yeşil iyi hâkimiyet). Düz gri alan, konuya henüz başlanmadığını ya da verinin az olduğunu gösterir. Isı haritasındaki her kutu o haftaki doğru oranıdır; “–” o hafta çalışılmadığı, çizgili kutu ise veri az olduğu anlamına gelir.<div style="max-width:300px;margin-top:8px"><div class="vr-leg"></div><div class="vr-tk"><span>%40 ve altı</span><span>%55</span><span>%70</span><span>%85</span><span>%95+</span></div></div></div>');
+  /* ders sayfaları: satır sayısına göre sayfalara paylaştır */
+  const agirlik = id => 40 + 21 * r.konu[id].size + 30;
+  let cur = [], top = 30;
+  const grup = [];
+  dersIds.forEach(id => { const a = agirlik(id); if (cur.length && top + a > 920) { grup.push(cur); cur = []; top = 0; } cur.push(id); top += a; });
+  if (cur.length) grup.push(cur);
+  grup.forEach((g, i) => S.push((i === 0 ? '<h2>Konu arazisi ve ısı haritası<small>her ders için; renk skalası 2. sayfadadır</small></h2>' : '') + g.map(id => vrBlok(id, r)).join('')));
+  S.push('<div><h2>Öğretmenin değerlendirmesi<small class="vr-no">kutular düzenlenebilir; yazdırmadan önce ekleyip çıkarabilirsiniz</small></h2>' + ed('degerlendirme', 'vr-edit', vrTaslak(r, kod), 'min-height:150px') + '</div><div class="vr-two"><div><h2>Evde destek önerileri</h2><ul class="vr-edit" data-ed="destek" style="padding:9px 12px 9px 28px;min-height:140px">' + destek + '</ul></div><div><h2>Sonraki dönem planı</h2><ul class="vr-edit" data-ed="plan" style="padding:9px 12px 9px 28px;min-height:140px">' + plan + '</ul></div></div><div class="vr-note" style="font-size:11.5px">Bu raporda öğrenci kodu, başka öğrencilerle karşılaştırma, ham sistem uyarıları, öğrencinin kendi notları, deneme sonuçları ve görüşme notları yer almaz.</div>');
+  return S;
+}
+
+function veliGorunumu() {
+  const kod = secili, o = ogr(kod);
+  if (!o) { gorunum = 'sinif'; return sinifGorunumu(); }
+  const sel = h('select', { 'aria-label': 'Rapor dönemi', onChange: e => { VR.donem = e.target.value; ciz(); }, value: VR.donem }, h('option', { value: '4', text: 'Son 4 hafta' }), h('option', { value: 'tum', text: 'Tümü' }));
+  const kok = h('div', null, h('div', { class: 'toolbar vr-no vr-bar' },
+    h('button', { class: 'btn kucuk', type: 'button', text: '← Öğrenci', onClick: () => { gorunum = 'ogrenci'; ciz(); } }),
+    h('h2', { style: 'margin:0;font-size:20px', text: 'Veli raporu' }), sel,
+    h('button', { class: 'btn birincil', type: 'button', text: 'Yazdır / PDF', onClick: () => window.print() })),
+  h('p', { class: 'hint vr-no vr-bar', text: 'Rapora öğrenci kodu yazdırılmaz. Ad, sınıf ve metin kutularına tıklayıp düzenleyebilirsin; düzenlemeler yalnızca bu oturumda tutulur. Denemeler rapora dahil değildir.' }));
+  if (!o.oturumlar.some(x => x.tur === 'konu')) { kok.append(Panel.kart('Veli raporu', h('p', { class: 'bos', text: 'Bu öğrenci için henüz konu çalışması kaydı yok.' }))); return kok; }
+  const r = vrHesap(o, VR.donem), sf = vrSayfalar(o, r, kod), doc = h('div');
+  doc.innerHTML = sf.map((x, i) => '<section class="vr-pg">' + x + '<footer><span>Hasandağı Ortaokulu · Veli Bilgilendirme Raporu</span><span>Sayfa ' + (i + 1) + ' / ' + sf.length + '</span></footer></section>').join('');
+  doc.querySelectorAll('[data-ed]').forEach(el => {
+    const key = kod + '|' + (el.dataset.g ? '' : VR.donem + '|') + el.dataset.ed;
+    if (VR.duzen[key] != null) el.innerHTML = VR.duzen[key];
+    el.contentEditable = 'true'; el.spellcheck = false;
+    el.addEventListener('input', () => { VR.duzen[key] = el.innerHTML; });
+  });
+  kok.append(doc);
+  return kok;
+}
+
 /* ---------- İskelet ---------- */
 function ciz() {
+  document.body.classList.toggle('vr', gorunum === 'veli');
   const girisYok = ONLINE && !anahtar;
   const sekmeler = [['sinif', 'Sınıf'], ...(ONLINE ? [['gelen', 'Gelen' + (okunmamisSayi() ? ' (' + okunmamisSayi() + ')' : '')]] : []), ...(ONLINE ? [['hesap', 'Hesaplar']] : []), ['deneme', 'Deneme tanımları'], ['aktar', ONLINE ? 'Dosya ve yedek' : 'Aktar ve yedek']];
-  const aktif = gorunum === 'ogrenci' ? 'sinif' : gorunum;
+  const aktif = (gorunum === 'ogrenci' || gorunum === 'veli') ? 'sinif' : gorunum;
   app.replaceChildren(h('div', { class: 'wrap' },
     h('header', { class: 'top' }, h('div', null, h('h1', { text: 'LGS Takip · Öğretmen' }), h('div', { class: 'sub', text: ONLINE ? 'Öğrencilerin sunucuya gönderdiği kayıtlar' : 'Haftalık dosyalardan sınıf ve öğrenci görünümü' })),
       ONLINE && anahtar ? h('div', { style: 'text-align:right' }, h('div', { id: 'durum', class: 'hint', 'aria-live': 'polite', text: durumMetni() }),
@@ -2244,7 +2481,7 @@ function ciz() {
           h('button', { class: 'btn kucuk', type: 'button', text: 'Anahtarı unut', onClick: () => { if (confirm('Anahtar bu tarayıcıdan silinsin mi? Veriler kalır.')) { anahtar = ''; UI.save(ANAHTAR_KEY, { a: '' }); yeniPinler = null; ciz(); } } }))) : null),
     girisYok ? null : h('nav', { class: 'sekmeler', 'aria-label': 'Bölümler' }, sekmeler.map(([id, t]) => h('button', { type: 'button', text: t, 'aria-current': aktif === id ? 'page' : null,
       onClick: () => { gorunum = id; ciz(); } }))),
-    h('main', { id: 'ana', tabindex: '-1' }, girisYok ? girisEkrani() : gorunum === 'sinif' ? sinifGorunumu() : gorunum === 'gelen' && ONLINE ? gelenGorunumu() : gorunum === 'ogrenci' ? ogrenciGorunumu() : gorunum === 'hesap' && ONLINE ? hesapGorunumu() : gorunum === 'deneme' ? denemeGorunumu() : aktarGorunumu())));
+    h('main', { id: 'ana', tabindex: '-1' }, girisYok ? girisEkrani() : gorunum === 'sinif' ? sinifGorunumu() : gorunum === 'gelen' && ONLINE ? gelenGorunumu() : gorunum === 'veli' ? veliGorunumu() : gorunum === 'ogrenci' ? ogrenciGorunumu() : gorunum === 'hesap' && ONLINE ? hesapGorunumu() : gorunum === 'deneme' ? denemeGorunumu() : aktarGorunumu())));
 }
 ciz();
 if (ONLINE && anahtar) esitle(false, true);
