@@ -281,6 +281,7 @@ function oturumDogrula(o, ref) {
   if (o.sure != null && !(isInt(o.sure) && o.sure > 0 && o.sure <= 600)) e.push('Süre 1–600 dakika arasında olmalı');
   if (!Array.isArray(o.bolumler) || !o.bolumler.length) { e.push('Ders bölümü yok'); return e; }
   if (!Array.isArray(o.hatalar)) { e.push('Hata listesi yok'); return e; }
+  if (o.hizli && (o.tur !== 'deneme' || o.ekleyen !== 'ogretmen' || o.hatalar.length || o.bolumler.some(b => b && b.konular))) e.push('Hızlı giriş geçersiz');
   if (o.tur === 'konu' && o.bolumler.length !== 1) e.push('Konu çalışması tek ders içermeli');
   if (o.tur === 'deneme' && o.bolumler.length !== DERSLER.length) e.push('Denemede altı dersin de sonucu girilmeli');
   const gorulen = new Set();
@@ -296,6 +297,7 @@ function oturumDogrula(o, ref) {
     if (b.d + b.y + b.b !== b.soru) e.push(ad + ': doğru + yanlış + boş = ' + (b.d + b.y + b.b) + ', soru sayısı ' + b.soru);
     if (o.tur === 'deneme' && b.soru !== ders.soru) e.push(ad + ': denemede ' + ders.soru + ' soru olmalı');
     if (o.tur === 'konu' && (typeof b.konu !== 'string' || !b.konu)) e.push(ad + ': konu seçilmemiş');
+    if (o.hizli) continue; // hızlı giriş: yalnızca doğru/yanlış sayısı, soru satırı yok
     const hs = o.hatalar.filter(h => h && h.ders === ders.id);
     const hy = hs.filter(h => h.sonuc === 'y').length;
     const hb = hs.filter(h => h.sonuc === 'b').length;
@@ -342,6 +344,8 @@ function temizOturum(o, ref) {
       no: h && h.no != null ? Number(h.no) : null, sonuc: h && h.sonuc, neden: h && h.neden != null ? h.neden : null
     }))
   };
+  if (o.ekleyen === 'ogretmen') c.ekleyen = 'ogretmen';
+  if (o.hizli === true) c.hizli = true;
   return oturumDogrula(c, ref).length ? null : c;
 }
 
@@ -786,6 +790,8 @@ const MESAJ = {
   kurulmamis: 'Sunucu henüz kurulmamış (kurulum fonksiyonu çalıştırılmadı).',
   'pin-gecersiz': 'PIN 4–8 haneli rakamlardan oluşmalı.',
   'ogrenci-yok': 'Bu kodla bir öğrenci hesabı yok.',
+  'bilinmeyen-islem': 'Sunucu bu işlemi tanımıyor. Apps Script kodunu güncelleyip yeni sürüm olarak dağıt.',
+  buyuk: 'Kayıt çok büyük.',
   'gecersiz-istek': 'Sunucu isteği geçersiz buldu.',
   'sunucu-hatasi': 'Sunucuda bir hata oluştu. Biraz sonra tekrar dene.',
   bilinmeyen: 'Beklenmeyen bir hata oluştu.'
@@ -1908,7 +1914,12 @@ const ad = kod => (ogr(kod).etiket ? ogr(kod).etiket + ' (' + kod + ')' : kod);
 
 /* ---------- Gelen kutusu: görüldü işareti ve öğrenci mesajları ---------- */
 const etkOf = (kod, id) => (ogr(kod).etk && ogr(kod).etk[id]) || null;
-const gorulduMu = (kod, id) => { const e = etkOf(kod, id); return !!(e && e.gorulme > 0); };
+const gorulduMu = (kod, id) => {
+  const e = etkOf(kod, id);
+  if (e && e.gorulme > 0) return true;
+  if (e && e.mesaj) return false;
+  return ogr(kod).oturumlar.some(o => o.id === id && o.ekleyen === 'ogretmen'); // kendi eklediğin "görülmemiş" sayılmaz
+};
 function okunmamisSayi(kod) {
   let n = 0;
   for (const k of kod ? [kod] : Object.keys(K.ogrenciler)) for (const o of ogr(k).oturumlar) if (!gorulduMu(k, o.id)) n++;
@@ -1963,7 +1974,7 @@ function gelenGorunumu() {
         mesajlar.map(m => h('div', { style: 'margin-top:6px;white-space:pre-wrap' }, h('span', { class: 'etiket', text: m[0] }), ' ' + m[1]))),
       x.yeni
         ? h('button', { class: 'btn kucuk birincil', type: 'button', text: 'Gördüm ✓', 'aria-label': ad(x.kod) + ' kaydını gördüm olarak işaretle', onClick: () => gordumIsaretle([{ kod: x.kod, id: o.id }]) })
-        : h('span', { class: 'hint', text: '✓ Görüldü ' + zamanTR(x.e.gorulme) }));
+        : h('span', { class: 'hint', text: x.e && x.e.gorulme ? '✓ Görüldü ' + zamanTR(x.e.gorulme) : 'Sen ekledin' }));
   };
   return Panel.kart('Gelen kayıtlar · ' + okunmamisSayi(gFiltre.kod) + ' görülmemiş',
     h('div', { class: 'toolbar' }, gecis, filtre, toplu),
@@ -1994,6 +2005,93 @@ function sinifGorunumu() {
       h('td', { text: r.sd ? LGS.fmt(r.sd.net) + (r.od ? ' (' + (r.sd.net - r.od.net >= 0 ? '+' : '−') + LGS.fmt(Math.abs(r.sd.net - r.od.net)) + ')' : '') : '–' }),
       h('td', null, r.oz.uyarilar.length ? r.oz.uyarilar.map(u => h('span', { class: 'chip', text: (u.seviye === 'uyari' ? 'Dikkat: ' : 'Bilgi: ') + u.metin })) : h('span', { class: 'hint', text: 'yok' })),
       h('td', null, h('button', { class: 'btn kucuk', type: 'button', text: 'Aç', 'aria-label': ad(r.kod) + ' ayrıntısını aç', onClick: () => { secili = r.kod; gorunum = 'ogrenci'; ciz(); } }))))));
+}
+
+/* ---------- Öğrenci adına deneme girişi ---------- */
+const yeniKD = kod => ({ kod, acik: false, mod: 'ayrinti', tanimId: '', ad: '', tarih: LGS.bugun(), sure: '155', not: '',
+  ders: Object.fromEntries(D.map(d => [d.id, { d: '', y: '', yn: '', bn: '' }])) });
+let KD = yeniKD(null);
+let kdGonderiliyor = false;
+const noListe = m => String(m).split(/[\s,;.]+/).filter(Boolean).map(Number);
+function denemeEkleKarti(kod) {
+  if (KD.kod !== kod) KD = yeniKD(kod);
+  if (!(ONLINE && anahtar)) return Panel.kart('Deneme ekle', h('p', { class: 'hint', text: 'Öğrenci adına deneme eklemek için sunucu bağlantısı ve öğretmen anahtarı gerekir.' }));
+  const o = ogr(kod), hizli = KD.mod === 'hizli';
+  const hata = h('div', { class: 'errbox', role: 'alert', hidden: true });
+  const tanimSec = h('select', { onChange: e => {
+    KD.tanimId = e.target.value;
+    const t = K.tanimlar.find(x => x.id === KD.tanimId);
+    if (t) { KD.ad = t.ad; if (t.tarih) KD.tarih = t.tarih; }
+    ciz();
+  } }, h('option', { value: '', text: 'Tanımsız deneme (konu ilişkisi kurulmaz)' }), K.tanimlar.map(t => h('option', { value: t.id, text: t.ad })));
+  tanimSec.value = KD.tanimId;
+  const girdi = (obj, a, ek) => h('input', { value: obj[a], onInput: e => { obj[a] = e.target.value; }, ...ek });
+  const sayiG = (x, a, max) => girdi(x, a, { type: 'number', inputmode: 'numeric', min: 0, max, step: 1 });
+  const metinG = (x, a) => girdi(x, a, { type: 'text', inputmode: 'text', placeholder: 'Örn: 3, 7, 12' });
+  const dugme = (m, t) => h('button', { type: 'button', 'aria-pressed': String(KD.mod === m), text: t, onClick: () => { KD.mod = m; ciz(); } });
+  const form = h('form', { class: 'form', novalidate: true },
+    h('div', { class: 'toggle' }, dugme('ayrinti', 'Ayrıntılı (soru numaralarıyla)'), dugme('hizli', 'Hızlı (yalnızca D/Y)')),
+    h('p', { class: 'hint', text: hizli ? 'Yalnızca nete ve soru sayısına yansır; konu ve hata nedeni analizine yansımaz.' : 'Yanlış ve boş soru numaralarını virgülle yaz. Hiç yanlış/boş yoksa alanı boş bırak; o derste doğru sayısı tam kabul edilir. Konu analizi için deneme tanımı seç.' }),
+    hizli ? null : field('Deneme tanımı', tanimSec),
+    h('div', { class: 'grid2' }, field('Deneme adı', girdi(KD, 'ad', { type: 'text', maxlength: 80 })), field('Tarih', girdi(KD, 'tarih', { type: 'date', max: LGS.bugun() }))),
+    field('Toplam süre (dk, ops.)', girdi(KD, 'sure', { type: 'number', min: 1, max: 600, step: 1 })),
+    D.map(d => { const x = KD.ders[d.id]; return h('div', { class: 'dersk' }, h('h3', { text: d.ad + ' · ' + d.soru + ' soru' }),
+      hizli ? h('div', { class: 'grid2' }, field('Doğru', sayiG(x, 'd', d.soru)), field('Yanlış', sayiG(x, 'y', d.soru)))
+        : h('div', { class: 'grid2' }, field('Yanlış soru numaraları', metinG(x, 'yn')), field('Boş soru numaraları', metinG(x, 'bn')))); }),
+    field('Not (ops., öğrenci de görür)', h('textarea', { maxlength: 300, value: KD.not, onInput: e => { KD.not = e.target.value; } })),
+    hata, h('div', null, h('button', { class: 'btn birincil', type: 'submit', text: 'Denemeyi öğrenciye ekle' })));
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    if (kdGonderiliyor) return;
+    const hs = [], bolumler = [], hatalar = [];
+    const tanim = hizli ? null : K.tanimlar.find(t => t.id === KD.tanimId) || null;
+    if (!KD.ad.trim()) hs.push('Deneme adı girilmeli');
+    const sureN = KD.sure === '' ? null : tamSayi(KD.sure);
+    if (Number.isNaN(sureN)) hs.push('Süre tam sayı (dakika) olmalı');
+    for (const d of D) {
+      const x = KD.ders[d.id];
+      let dd, yy, bb;
+      if (hizli) {
+        if (x.d === '' || x.y === '') { hs.push(d.ad + ': doğru ve yanlış sayısı girilmeli (yoksa 0 yaz)'); continue; }
+        dd = tamSayi(x.d); yy = tamSayi(x.y); bb = d.soru - dd - yy;
+        if (!(dd >= 0 && yy >= 0 && bb >= 0)) { hs.push(d.ad + ': doğru + yanlış, 0–' + d.soru + ' arasında olmalı'); continue; }
+      } else {
+        const yn = noListe(x.yn), bn = noListe(x.bn), hepsi = [...yn, ...bn];
+        if (hepsi.some(n => !(Number.isInteger(n) && n >= 1 && n <= d.soru))) { hs.push(d.ad + ': soru numaraları 1–' + d.soru + ' arasında olmalı'); continue; }
+        if (new Set(hepsi).size !== hepsi.length) { hs.push(d.ad + ': aynı soru numarası iki kez yazılmış'); continue; }
+        yy = yn.length; bb = bn.length; dd = d.soru - yy - bb;
+        for (const [dz, sn] of [[yn, 'y'], [bn, 'b']]) for (const no of dz) hatalar.push({ ders: d.id, konu: tanim ? (tanim.harita[d.id][no - 1] || null) : null, no, sonuc: sn, neden: null });
+      }
+      bolumler.push({ ders: d.id, konu: null, soru: d.soru, d: dd, y: yy, b: bb, konular: tanim ? LGS.konuSayilari(tanim.harita[d.id]) : null });
+    }
+    if (hs.length) return UI.hataKutusu(hata, hs);
+    const aday = { id: LGS.uid(), tarih: KD.tarih, tur: 'deneme', kaynak: '', ad: KD.ad.trim(), tanimId: tanim ? tanim.id : null, sure: sureN, not: KD.not, bolumler, hatalar, ekleyen: 'ogretmen', hizli };
+    const c = LGS.temizOturum(aday, yarin());
+    if (!c) return UI.hataKutusu(hata, [...new Set(LGS.oturumDogrula(aday, yarin()))]);
+    const ayni = o.oturumlar.find(x => x.tur === 'deneme' && ((c.tanimId && x.tanimId === c.tanimId) || x.tarih === c.tarih || x.ad.toLocaleLowerCase('tr') === c.ad.toLocaleLowerCase('tr')));
+    if (ayni && !confirm('Benzer bir deneme zaten kayıtlı:\n' + ayni.ad + ' · ' + LGS.tarihTR(ayni.tarih) + '\n\nYine de eklensin mi?')) return;
+    const net = LGS.denemeListesi([c])[0].net;
+    const dokum = c.bolumler.map(x => LGS.dersBul(x.ders).ad + ': ' + x.d + 'D ' + x.y + 'Y ' + x.b + 'B').join('\n');
+    if (!confirm(ad(kod) + ' için eklenecek:\n' + c.ad + ' · ' + LGS.tarihTR(c.tarih) + ' · net ' + LGS.fmt(net) + '\n\n' + dokum)) return;
+    kdGonderiliyor = true;
+    try {
+      const j = await sSor('o-deneme-ekle', { kod, oturum: c });
+      const t = LGS.temizOturum(j.oturum, FAR) || c;
+      o.oturumlar = o.oturumlar.filter(x => x.id !== t.id).concat([t]); kaydet();
+      KD = yeniKD(kod); KD.acik = true; UI.toast('Deneme eklendi: net ' + LGS.fmt(net)); ciz();
+    } catch (x) { UI.hataKutusu(hata, [x.message]); }
+    finally { kdGonderiliyor = false; }
+  });
+  const eklenen = LGS.sirala(o.oturumlar.filter(x => x.ekleyen === 'ogretmen')).reverse();
+  return Panel.kart('Deneme ekle',
+    h('details', { open: KD.acik || null, onToggle: e => { KD.acik = e.target.open; } }, h('summary', { text: 'Öğrenci adına deneme gir' }), form),
+    eklenen.length ? h('div', null, h('h3', { text: 'Senin eklediklerin (' + eklenen.length + ')' }), h('ul', { class: 'liste' }, eklenen.map(x => h('li', null,
+      h('div', { style: 'flex:1 1 300px;min-width:0' }, h('strong', { text: x.ad }), h('div', { class: 'hint', text: LGS.tarihTR(x.tarih) + ' · net ' + LGS.fmt(LGS.denemeListesi([x])[0].net) + (x.hizli ? ' · hızlı giriş' : '') })),
+      h('button', { class: 'btn kucuk tehlike', type: 'button', text: 'Sil', 'aria-label': x.ad + ' denemesini sil', onClick: async () => {
+        if (!confirm(x.ad + ' silinsin mi? Öğrenciden de kalkar.')) return;
+        try { await sSor('o-deneme-sil', { kod, id: x.id }); o.oturumlar = o.oturumlar.filter(y => y.id !== x.id); kaydet(); ciz(); }
+        catch (err) { UI.toast('Silinemedi: ' + err.message); }
+      } }))))) : null);
 }
 
 /* ---------- Öğrenci ayrıntısı ---------- */
@@ -2049,6 +2147,8 @@ function ogrenciGorunumu() {
       } else { dosya(); UI.toast('Hedef kaydedildi. Dosyayı öğrenciye ilet.'); }
       ciz();
     } }))));
+
+  kok.append(denemeEkleKarti(kod));
 
   /* Özet paneli */
   const panel = h('div');
@@ -2262,7 +2362,7 @@ function girisEkrani() {
 }
 
 /* ---------- Veli raporu (yazdırılabilir, öğrenci kodu içermez) ---------- */
-const VR = { donem: '4', duzen: {} };
+const VR = { donem: '4', deneme: false, duzen: {} };
 const vrEsc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const VR_ST = [[.40, 166, 50, 32], [.55, 232, 128, 58], [.70, 235, 190, 61], [.85, 59, 175, 155], [.95, 31, 95, 168]];
 function vrPal(m) {
@@ -2445,6 +2545,27 @@ function vrSayfalar(o, r, kod) {
   return S;
 }
 
+function vrDenemeSayfalari(o, r) {
+  const L = LGS, bas = r.donem === 'tum' ? '0000-00-00' : L.gunEkle(r.hb, -21);
+  const secilen = o.oturumlar.filter(x => x.tur === 'deneme' && x.tarih >= bas);
+  const dl = L.denemeListesi(secilen);
+  const per = r.donem === 'tum' ? 'kayıtlı tüm dönem' : 'son 4 hafta';
+  if (!dl.length) return ['<div><h2>Deneme sonuçları<small>' + per + '</small></h2><p class="vr-sub">Bu dönemde deneme kaydı yok.</p></div>'];
+  const ort = f => dl.reduce((a, x) => a + f(x), 0) / dl.length;
+  const son = dl[dl.length - 1], enIyi = Math.max(...dl.map(x => x.net));
+  const kpi = '<div class="vr-kpi"><div><b>' + dl.length + '</b><span>Deneme (' + per + ')</span></div><div><b>' + L.fmt(son.net) + '</b><span>Son deneme neti</span></div><div><b>' + L.fmt(ort(x => x.net)) + '</b><span>Ortalama net</span></div><div><b>' + L.fmt(enIyi) + '</b><span>En yüksek net</span></div></div>';
+  const satir = x => '<tr><td>' + vrEsc(x.ad) + '</td><td>' + vrKisa(x.tarih) + '</td><td><b>' + L.fmt(x.net) + '</b></td>' + L.DERSLER.map(d => '<td>' + L.fmt(x.dersNet[d.id], 1) + '</td>').join('') + '</tr>';
+  const ortSatir = '<tr><td colspan="2"><b>Ortalama</b></td><td><b>' + L.fmt(ort(x => x.net)) + '</b></td>' + L.DERSLER.map(d => '<td><b>' + L.fmt(ort(x => x.dersNet[d.id]), 1) + '</b></td>').join('') + '</tr>';
+  const S = [], N = 24;
+  for (let i = 0; i < dl.length; i += N) {
+    const sonParca = i + N >= dl.length;
+    S.push((i === 0 ? '<div><h2>Deneme sonuçları<small>' + per + '</small></h2></div>' + kpi : '') +
+      '<div><table><thead><tr><th>Deneme</th><th>Tarih</th><th>Toplam net</th>' + L.DERSLER.map(d => '<th>' + VR_KISA[d.id] + '</th>').join('') + '</tr></thead><tbody>' + dl.slice(i, i + N).map(satir).join('') + (sonParca ? ortSatir : '') + '</tbody></table>' +
+      (sonParca ? '<p class="vr-sub">Net = doğru − yanlış ÷ 3. Farklı denemelerin zorluk düzeyi aynı olmayabilir.</p>' : '') + '</div>');
+  }
+  return S;
+}
+
 function veliGorunumu() {
   const kod = secili, o = ogr(kod);
   if (!o) { gorunum = 'sinif'; return sinifGorunumu(); }
@@ -2452,10 +2573,15 @@ function veliGorunumu() {
   const kok = h('div', null, h('div', { class: 'toolbar vr-no vr-bar' },
     h('button', { class: 'btn kucuk', type: 'button', text: '← Öğrenci', onClick: () => { gorunum = 'ogrenci'; ciz(); } }),
     h('h2', { style: 'margin:0;font-size:20px', text: 'Veli raporu' }), sel,
+    h('label', null, h('input', { type: 'checkbox', checked: VR.deneme || null, onChange: e => { VR.deneme = e.target.checked; ciz(); } }), ' Denemeleri rapora ekle'),
     h('button', { class: 'btn birincil', type: 'button', text: 'Yazdır / PDF', onClick: () => window.print() })),
-  h('p', { class: 'hint vr-no vr-bar', text: 'Rapora öğrenci kodu yazdırılmaz. Ad, sınıf ve metin kutularına tıklayıp düzenleyebilirsin; düzenlemeler yalnızca bu oturumda tutulur. Denemeler rapora dahil değildir.' }));
-  if (!o.oturumlar.some(x => x.tur === 'konu')) { kok.append(Panel.kart('Veli raporu', h('p', { class: 'bos', text: 'Bu öğrenci için henüz konu çalışması kaydı yok.' }))); return kok; }
+  h('p', { class: 'hint vr-no vr-bar', text: 'Rapora öğrenci kodu yazdırılmaz. Ad, sınıf ve metin kutularına tıklayıp düzenleyebilirsin; düzenlemeler yalnızca bu oturumda tutulur. Tüm denemeleri girdikten sonra “Denemeleri rapora ekle” kutusunu işaretle.' }));
+  if (!o.oturumlar.some(x => x.tur === 'konu' || (VR.deneme && x.tur === 'deneme'))) { kok.append(Panel.kart('Veli raporu', h('p', { class: 'bos', text: VR.deneme ? 'Bu öğrenci için henüz kayıt yok.' : 'Bu öğrenci için henüz konu çalışması kaydı yok.' }))); return kok; }
   const r = vrHesap(o, VR.donem), sf = vrSayfalar(o, r, kod), doc = h('div');
+  if (VR.deneme) {
+    sf[sf.length - 1] = sf[sf.length - 1].replace('öğrencinin kendi notları, deneme sonuçları ve görüşme notları', 'öğrencinin kendi notları ve görüşme notları');
+    sf.splice(2, 0, ...vrDenemeSayfalari(o, r));
+  }
   doc.innerHTML = sf.map((x, i) => '<section class="vr-pg">' + x + '<footer><span>Hasandağı Ortaokulu · Veli Bilgilendirme Raporu</span><span>Sayfa ' + (i + 1) + ' / ' + sf.length + '</span></footer></section>').join('');
   doc.querySelectorAll('[data-ed]').forEach(el => {
     const key = kod + '|' + (el.dataset.g ? '' : VR.donem + '|') + el.dataset.ed;
